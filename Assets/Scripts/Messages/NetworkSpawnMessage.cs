@@ -9,7 +9,9 @@ namespace ChatClientExample
     {
         public override NetworkMessageType Type { get { return NetworkMessageType.NETWORK_SPAWN; } }
 
+        public uint networkID;
         public uint objectType;
+
         public uint posx;
         public uint posy;
         public uint posz;
@@ -18,7 +20,7 @@ namespace ChatClientExample
         public override void SerializeObject(ref DataStreamWriter writer)
         {
             base.SerializeObject(ref writer);
-
+            writer.WriteUInt(networkID);
             writer.WriteUInt(objectType);
 
             writer.WriteUInt(posx);
@@ -29,6 +31,7 @@ namespace ChatClientExample
         public override void DeserializeObject(ref DataStreamReader reader)
         {
             base.DeserializeObject(ref reader);
+            networkID = reader.ReadUInt();
             objectType = reader.ReadUInt();
 
             posx = reader.ReadUInt();

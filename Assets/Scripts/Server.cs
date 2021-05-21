@@ -24,7 +24,8 @@ namespace ChatClientExample
         CHAT_MESSAGE,
         CHAT_MESSAGE_RESPONSE,
         CHAT_QUIT,
-        NETWORK_SPAWN
+        NETWORK_SPAWN,
+        INPUT_UPDATE
     }
 
     public static class NetworkMessageInfo
@@ -37,7 +38,7 @@ namespace ChatClientExample
             { NetworkMessageType.NETWORK_SPAWN,             typeof(NetworkSpawnMessage) },
             //{ NetworkMessageType.NETWORK_DESTROY,           typeof(DestroyMessage) },
             //{ NetworkMessageType.NETWORK_UPDATE_POSITION,   typeof(UpdatePositionMessage) },
-            //{ NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
+            { NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
             //{ NetworkMessageType.PING,                      typeof(PingMessage) },
             //{ NetworkMessageType.PONG,                      typeof(PongMessage) }
         };
@@ -50,7 +51,8 @@ namespace ChatClientExample
             { NetworkMessageType.HANDSHAKE, HandleClientHandshake },
             { NetworkMessageType.CHAT_MESSAGE, HandleClientMessage },
             { NetworkMessageType.CHAT_QUIT, HandleClientExit },
-            
+            { NetworkMessageType.INPUT_UPDATE, HandleInputMessage },
+
 
         };
 
@@ -151,17 +153,68 @@ namespace ChatClientExample
             string msg = $"{message.name.ToString()} has joined the chat.";
             Debug.Log($"{msg.ToString()} has joined the chat.");
 
+            uint tempClientID = (uint)serv.m_Connections.Length - 1;
+
+            HandshakeResponseMessage response = new HandshakeResponseMessage
+            {
+                message = msg,
+                clientID = tempClientID
+            };
+            //serv.SendReply(serv.m_Connections[serv.m_Connections.Length - 1], response);
+            serv.SendReply(connection, response);
+            //NEW chatMessage and broadcast to all clients
             ChatMessage chatMsg = new ChatMessage
             {
-                message = msg
-            };
+                message = msg,
 
-            // Send all clients the chat message
+            };
             serv.SendBroadcast(chatMsg);
+
+            //Spawn Server Player Objects
+            for (uint i = 0; i < serv.m_Connections.Length; i++)
+            {
+                if (i != tempClientID)
+                {
+                    NetworkSpawnMessage spawnServerPlayer = new NetworkSpawnMessage
+                    {
+                        networkID = i,
+                        objectType = 0,
+
+                        //posx = (uint)serv.networkManager.networkedReferences[i].transform.position.x,
+                        //posy = (uint)serv.networkManager.networkedReferences[i].transform.position.y,
+                        //posz = (uint)serv.networkManager.networkedReferences[i].transform.position.z,
+
+                        posx =0,
+                        posy =0,
+                        posz =0
+                    };
+
+                    serv.SendBroadcast(spawnServerPlayer);
+                }
+            }
+
+            //Spawn LOCAL Player Object
+            NetworkSpawnMessage spawnPlayer = new NetworkSpawnMessage
+            {
+                networkID = tempClientID,
+                objectType = 0,
+
+                posx = 0,
+                posy = 0,
+                posz = 0
+            };
+            serv.SendBroadcast(spawnPlayer);
+
+        }
+        static void HandleInputMessage(Server serv, NetworkConnection connection, MessageHeader header)
+        {
+            InputUpdateMessage msg = header as InputUpdateMessage;
+
+            //BroadCast to Clients
+            serv.SendBroadcast(msg);
 
         }
 
-        
 
         static void HandleClientExit(Server serv, NetworkConnection connection, MessageHeader header)
         {
@@ -207,8 +260,21 @@ namespace ChatClientExample
                 {
                     header.SerializeObject(ref writer);
                     m_Driver.EndSend(writer);
-                    Debug.Log("Msg send");
+                    Debug.Log("Broadcast send: " + header.GetType());
                 }
+            }
+        }
+        public void SendReply(NetworkConnection connection, MessageHeader header)
+        {
+            DataStreamWriter writer;
+            int result = m_Driver.BeginSend(NetworkPipeline.Null, connection, out writer);
+
+            if (result == 0)
+            {
+                header.SerializeObject(ref writer);
+                m_Driver.EndSend(writer);
+                Debug.Log("Reply send: " + header.GetType());
+
             }
         }
     }

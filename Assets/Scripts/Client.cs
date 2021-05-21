@@ -12,11 +12,16 @@ namespace ChatClientExample
     {
         static Dictionary<NetworkMessageType, ClientMessageHandler> networkMessageHandlers = new Dictionary<NetworkMessageType, ClientMessageHandler>() {
             // link game events to functions...
-            { NetworkMessageType.HANDSHAKE_RESPONSE, HandshakeResponseHandler },
-            { NetworkMessageType.CHAT_MESSAGE, HandleChatMessage },
+            { NetworkMessageType.HANDSHAKE_RESPONSE,    HandshakeResponseHandler },
+            { NetworkMessageType.CHAT_MESSAGE,          HandleChatMessage },
+            { NetworkMessageType.NETWORK_SPAWN,         HandleSpawnMessage },
+            { NetworkMessageType.INPUT_UPDATE,          HandleInputMessage }
 
 
         };
+
+
+        public uint clientID;
 
         public NetworkDriver m_Driver;
         public NetworkConnection m_Connection;
@@ -100,12 +105,23 @@ namespace ChatClientExample
                 }
             }
 
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                Debug.Log("A");
+                SendInput(10, 0);
+            }
+
         }
         static void HandshakeResponseHandler(Client client, MessageHeader header)
         {
-            HandshakeResponseMessage response = header as HandshakeResponseMessage;
-            FixedString128 str = response.message;
-            Debug.Log(str);
+            HandshakeResponseMessage msg = header as HandshakeResponseMessage;
+            FixedString128 str = msg.message;
+            client.clientID = msg.clientID;
+            Debug.Log("ID: " + client.clientID + " : " +str);
+
+            client.chat.InvokeMessage(msg.message, client.chat.chatMessages);
+
+
         }
         static void HandleChatMessage(Client client, MessageHeader header)
         {
@@ -114,6 +130,42 @@ namespace ChatClientExample
 
             client.chat.InvokeMessage(msg.message, client.chat.chatMessages);
 
+        }
+        static void HandleSpawnMessage(Client client, MessageHeader header)
+        {
+            NetworkSpawnMessage msg = header as NetworkSpawnMessage;
+
+            GameObject obj;
+            if(!client.networkManager.SpawnWithID(
+                                                (NetworkSpawnObject)msg.objectType,
+                                                msg.networkID,
+                                                new Vector3(msg.posx,msg.posy,msg.posz),
+                                                out obj))
+            {
+                Debug.Log("Spawn Failed");
+            }
+            else
+            {
+                Debug.Log("Spawn Player:" + msg.networkID + "Pos: " + new Vector3(msg.posx, msg.posy, msg.posz));
+            }
+        }
+        static void HandleInputMessage(Client client, MessageHeader header)
+        {
+            InputUpdateMessage msg = header as InputUpdateMessage;
+
+            client.networkManager.networkedReferences[msg.networkObjectID].transform.position = 
+                client.networkManager.networkedReferences[msg.networkObjectID].transform.position + new Vector3(msg.movex, 0 , msg.movez);
+        }
+        public void SendInput(uint distanceX, uint distanceZ)
+        {
+            InputUpdateMessage msg = new InputUpdateMessage
+            {
+                networkObjectID = clientID,
+                movex = distanceX,
+                movez = distanceZ
+            };
+
+            SendPackedMessage(msg);
         }
 
         public void SendMyMessage()

@@ -9,7 +9,8 @@ public class NetworkManager : MonoBehaviour
 
     [SerializeField]
     private Spawninfo spawnInfo;
-    private Dictionary<uint, GameObject> networkedReferences = new Dictionary<uint, GameObject>();
+    
+    public Dictionary<uint, GameObject> networkedReferences = new Dictionary<uint, GameObject>();
 
     public bool GetObjectID(uint id, out GameObject obj)
     {
@@ -20,7 +21,7 @@ public class NetworkManager : MonoBehaviour
         }
         return false;
     }
-    public bool SpawnWithID(NetworkSpawnObject type, uint id, out GameObject obj)
+    public bool SpawnWithID(NetworkSpawnObject type, uint id,Vector3 pos, out GameObject obj)
     {
         obj = null;
         if (networkedReferences.ContainsKey(id))
