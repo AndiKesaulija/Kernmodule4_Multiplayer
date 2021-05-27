@@ -21,8 +21,6 @@ public class LocalData : MonoBehaviour
 
             userField.text = user;
             passwordField.text = password;
-
-
         }
     }
 

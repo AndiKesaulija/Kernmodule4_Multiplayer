@@ -61,6 +61,7 @@ public class NetworkBehavior : MonoBehaviour
         //SceneManager.LoadScene(5);
 
     }
+
     IEnumerator GetRequest(string url)
     {
         using (UnityWebRequest webRequest = UnityWebRequest.Get(url))

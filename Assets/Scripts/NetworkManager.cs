@@ -26,6 +26,8 @@ public class NetworkManager : MonoBehaviour
         obj = null;
         if (networkedReferences.ContainsKey(id))
         {
+            Debug.Log("CouldNot SpawnWithID: " + id);
+
             return false;
         }
         else
@@ -39,7 +41,7 @@ public class NetworkManager : MonoBehaviour
             netObj.networkID = id;
 
             networkedReferences.Add(id, obj);
-            
+            Debug.Log("SpawnWithID: " + id);
             return true;
         }
     }

@@ -9,9 +9,10 @@ namespace ChatClientExample
     {
         public override NetworkMessageType Type { get { return NetworkMessageType.INPUT_UPDATE; } }
 
-        public uint networkObjectID;
+        public uint networkID;
 
         //Temp X,Z pos + 10
+        public InputUpdate input;
         public uint movex;
         public uint movez;
 
@@ -19,18 +20,19 @@ namespace ChatClientExample
         {
             base.SerializeObject(ref writer);
 
-            writer.WriteUInt(networkObjectID);
+            writer.WriteUInt(networkID);
+            writer.WriteFloat(input.horizontal);
+            writer.WriteFloat(input.vertical);
 
-            writer.WriteUInt(movex);
-            writer.WriteUInt(movez);
+
         }
         public override void DeserializeObject(ref DataStreamReader reader)
         {
             base.DeserializeObject(ref reader);
 
-            networkObjectID = reader.ReadUInt();
-            movex = reader.ReadUInt();
-            movez = reader.ReadUInt();
+            networkID = reader.ReadUInt();
+            input.horizontal = reader.ReadFloat();
+            input.vertical = reader.ReadFloat();
 
         }
     }

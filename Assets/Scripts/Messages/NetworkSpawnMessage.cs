@@ -23,6 +23,7 @@ namespace ChatClientExample
             writer.WriteUInt(networkID);
             writer.WriteUInt(objectType);
 
+
             writer.WriteUInt(posx);
             writer.WriteUInt(posy);
             writer.WriteUInt(posz);

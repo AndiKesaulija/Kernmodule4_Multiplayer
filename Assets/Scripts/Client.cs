@@ -32,6 +32,7 @@ namespace ChatClientExample
 
         public NetworkManager networkManager;
 
+        private InputUpdate myInput;
 
         void Start()
         {
@@ -105,21 +106,25 @@ namespace ChatClientExample
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                Debug.Log("A");
-                SendInput(10, 0);
-            }
+            
 
         }
         static void HandshakeResponseHandler(Client client, MessageHeader header)
         {
-            HandshakeResponseMessage msg = header as HandshakeResponseMessage;
-            FixedString128 str = msg.message;
-            client.clientID = msg.clientID;
-            Debug.Log("ID: " + client.clientID + " : " +str);
+            //SpawnPlayer
+            HandshakeResponseMessage response = header as HandshakeResponseMessage;
 
-            client.chat.InvokeMessage(msg.message, client.chat.chatMessages);
+            GameObject obj;
+            if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID,new Vector3(0,0,0), out obj))
+            {
+                NetworkPlayer player = obj.GetComponent<NetworkPlayer>();
+                player.isLocal = true;
+                player.isServer = false;
+            }
+            else
+            {
+                Debug.LogError("Could not spawn player!");
+            }
 
 
         }
@@ -147,22 +152,32 @@ namespace ChatClientExample
             else
             {
                 Debug.Log("Spawn Player:" + msg.networkID + "Pos: " + new Vector3(msg.posx, msg.posy, msg.posz));
+                if(msg.networkID == client.clientID)
+                {
+                    obj.GetComponent<NetworkPlayer>().isLocal = true;
+                }
+                else
+                {
+                    obj.GetComponent<NetworkPlayer>().isServer = true;
+
+                }
             }
         }
         static void HandleInputMessage(Client client, MessageHeader header)
         {
             InputUpdateMessage msg = header as InputUpdateMessage;
 
-            client.networkManager.networkedReferences[msg.networkObjectID].transform.position = 
-                client.networkManager.networkedReferences[msg.networkObjectID].transform.position + new Vector3(msg.movex, 0 , msg.movez);
+            //client.networkManager.networkedReferences[msg.networkObjectID].transform.position = 
+            //    client.networkManager.networkedReferences[msg.networkObjectID].transform.position + new Vector3(msg.movex, 0 , msg.movez);
+
+            client.networkManager.networkedReferences[msg.networkID].GetComponent<NetworkPlayer>().UpdateInput(msg.input);
         }
-        public void SendInput(uint distanceX, uint distanceZ)
+        public void SendInput(InputUpdate myInput)
         {
             InputUpdateMessage msg = new InputUpdateMessage
             {
-                networkObjectID = clientID,
-                movex = distanceX,
-                movez = distanceZ
+                networkID = clientID,
+                input = myInput
             };
 
             SendPackedMessage(msg);

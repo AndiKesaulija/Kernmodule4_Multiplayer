@@ -4,18 +4,41 @@ using UnityEngine;
 
 namespace ChatClientExample
 {
+    public struct InputUpdate
+    {
+        public float horizontal, vertical;
+        //public bool fire, jump;
+
+        public InputUpdate(float h, float v)
+        {
+            horizontal = h;
+            vertical = v;
+        }
+    }
     public class NetworkPlayer : MonoBehaviour
     {
         public bool isLocal = false;
         public bool isServer = false;
         //Camera
-        public uint id;
+        public uint networkId;
 
-        Client client;
-        Server server;
+        public Client client;
+        //public Server server;
+
+        InputUpdate input;
+
+        //movement
+        public Rigidbody rb;
+        public Vector3 movement;
+        public float speed = 10;
+
 
         void Start()
         {
+            rb = this.GetComponent<Rigidbody>();
+            client = FindObjectOfType<Client>();
+
+
             if (isLocal)
             {
                 GetComponentInChildren<Camera>().enabled = true;
@@ -24,20 +47,29 @@ namespace ChatClientExample
                     Camera.main.enabled = false;
                 }
 
-                client = FindObjectOfType<Client>();
             }
             if (isServer)
             {
-                server = FindObjectOfType<Server>();
+
             }
         }
 
         void Update()
         {
-			if (isLocal)
+            InputUpdate update = new InputUpdate(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+
+            if (isLocal)
 			{
-				
-			}
+                //movement = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+                InputUpdateMessage msg = new InputUpdateMessage
+                {
+                    networkID = client.clientID,
+                    input = update
+                };
+
+                client.SendPackedMessage(msg);
+
+            }
 
 			if (isServer)
 			{
@@ -45,5 +77,22 @@ namespace ChatClientExample
 				
 			}
 		}
+        void FixedUpdate()
+        {
+            MovePLayer(movement);
+        }
+
+        public void UpdateInput(InputUpdate received)
+        {
+            //input.horizontal = received.horizontal;
+            //input.vertical = received.vertical;
+
+            movement = new Vector3(received.horizontal, 0, received.vertical);
+        }
+        void MovePLayer(Vector3 direction)
+        {
+            //rb.velocity = direction * speed;
+            rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
+        }
     }
 }

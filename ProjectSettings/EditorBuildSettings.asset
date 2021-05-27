@@ -8,10 +8,10 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Login.unity
     guid: 6017a75a01fcfd2418de857d9de389ac
-  - enabled: 1
+  - enabled: 0
     path: Assets/Server.unity
     guid: bea8e876499e95f4381ddf00ae1c9522
-  - enabled: 0
+  - enabled: 1
     path: Assets/Client.unity
     guid: 6acabc5747cda3448a540e35206ea6e3
   - enabled: 0
