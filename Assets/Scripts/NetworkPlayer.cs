@@ -37,7 +37,7 @@ namespace ChatClientExample
         {
             rb = this.GetComponent<Rigidbody>();
             client = FindObjectOfType<Client>();
-
+            networkId = this.GetComponent<NetworkObject>().networkID;
 
             if (isLocal)
             {
@@ -63,7 +63,7 @@ namespace ChatClientExample
                 //movement = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
                 InputUpdateMessage msg = new InputUpdateMessage
                 {
-                    networkID = client.clientID,
+                    networkID = networkId,
                     input = update
                 };
 

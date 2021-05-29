@@ -19,7 +19,9 @@ namespace ChatClientExample
         CHAT_MESSAGE_RESPONSE,
         CHAT_QUIT,
         NETWORK_SPAWN,
-        INPUT_UPDATE
+        NETWORK_DESTROY,
+        INPUT_UPDATE,
+        GAME_QUIT
     }
 
     public static class NetworkMessageInfo
@@ -30,11 +32,13 @@ namespace ChatClientExample
             { NetworkMessageType.CHAT_MESSAGE,              typeof(ChatMessage) },
             //{ NetworkMessageType.CHAT_QUIT,                 typeof(ChatQuitMessage) },
             { NetworkMessageType.NETWORK_SPAWN,             typeof(NetworkSpawnMessage) },
-            //{ NetworkMessageType.NETWORK_DESTROY,           typeof(DestroyMessage) },
+            { NetworkMessageType.NETWORK_DESTROY,           typeof(NetworkDestroyMessage) },
             //{ NetworkMessageType.NETWORK_UPDATE_POSITION,   typeof(UpdatePositionMessage) },
             { NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
             //{ NetworkMessageType.PING,                      typeof(PingMessage) },
             //{ NetworkMessageType.PONG,                      typeof(PongMessage) }
+            { NetworkMessageType.GAME_QUIT,                      typeof(QuitMessage) }
+
         };
     }
 
@@ -44,8 +48,9 @@ namespace ChatClientExample
         static Dictionary<NetworkMessageType, ServerMessageHandler> networkMessageHandlers = new Dictionary<NetworkMessageType, ServerMessageHandler> {
             { NetworkMessageType.HANDSHAKE, HandleClientHandshake },
             { NetworkMessageType.CHAT_MESSAGE, HandleClientMessage },
-            { NetworkMessageType.CHAT_QUIT, HandleClientExit },
+            { NetworkMessageType.GAME_QUIT, HandleClientExit },
             { NetworkMessageType.INPUT_UPDATE, HandleInputMessage },
+            { NetworkMessageType.NETWORK_DESTROY, HandleDestroyMessage },
 
 
         };
@@ -58,6 +63,9 @@ namespace ChatClientExample
         private Dictionary<NetworkConnection, NetworkPlayer> playerInstances = new Dictionary<NetworkConnection, NetworkPlayer>();
 
         public NetworkManager networkManager;
+
+        private static uint nextClientId = 0;
+        public static uint NextClientID => ++nextClientId;
 
         void Start()
         {
@@ -105,6 +113,7 @@ namespace ChatClientExample
             while ((c = m_Driver.Accept()) != default(NetworkConnection))
             {
                 m_Connections.Add(c);
+                
                 Debug.Log("Accepted a connection");
             }
 
@@ -148,20 +157,12 @@ namespace ChatClientExample
             string msg = $"{message.name.ToString()} has joined the chat.";
             Debug.Log($"{msg.ToString()} has joined the chat.");
 
+            //HandshakeResponseMessage response = new HandshakeResponseMessage
+            //{
+            //    message = msg,
+            //};
+            //serv.SendReply(connection, response);
 
-            HandshakeResponseMessage response = new HandshakeResponseMessage
-            {
-                message = msg,
-            };
-            //serv.SendReply(serv.m_Connections[serv.m_Connections.Length - 1], response);
-            serv.SendReply(connection, response);
-            //NEW chatMessage and broadcast to all clients
-            ChatMessage chatMsg = new ChatMessage
-            {
-                message = msg,
-
-            };
-            serv.SendBroadcast(chatMsg);
 
             //Spawn LOCAL Player Object
             GameObject newPlayer;
@@ -171,6 +172,7 @@ namespace ChatClientExample
                 NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
                 playerInstance.isServer = true;
                 playerInstance.isLocal = false;
+                playerInstance.networkId = playerInstance.GetComponent<NetworkObject>().networkID;
                 networkId = playerInstance.GetComponent<NetworkObject>().networkID;
 
                 serv.playerInstances.Add(connection, playerInstance);
@@ -178,8 +180,11 @@ namespace ChatClientExample
                 // Send spawn local player back to sender
                 HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
                 {
+                    clientID = NextClientID,
                     message = $"Welcome {message.name.ToString()}!",
-                    networkID = playerInstance.networkId
+                    networkID = playerInstance.networkId,
+
+
                 };
 
                 serv.SendReply(connection, responseMsg);
@@ -198,7 +203,10 @@ namespace ChatClientExample
                 NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
                 {
                     networkID = pair.Value.networkId,
-                    objectType = (uint)NetworkSpawnObject.PLAYER
+                    objectType = (uint)NetworkSpawnObject.PLAYER,
+                    posx = pair.Value.transform.position.x,
+                    posy = pair.Value.transform.position.y,
+                    posz = pair.Value.transform.position.z
                 };
 
                 serv.SendReply(connection, spawnMsg);
@@ -216,14 +224,14 @@ namespace ChatClientExample
                     };
                     serv.SendReply(serv.m_Connections[i], spawnMsg);
                 }
-               
+
             }
             else
             {
                 Debug.LogError("Invalid network id for broadcasting creation");
             }
-            
-            
+
+
 
         }
         static void HandleInputMessage(Server serv, NetworkConnection connection, MessageHeader header)
@@ -238,7 +246,9 @@ namespace ChatClientExample
                 }
                 else
                 {
-                    Debug.LogError("NetworkID Mismatch for Player Input");
+                    Debug.LogError("NetworkID Mismatch for Player Input" + 
+                                    "Connection ID: " + serv.playerInstances[connection].networkId + 
+                                    "InputID: " + inputMsg.networkID);
                 }
             }
             else
@@ -256,11 +266,23 @@ namespace ChatClientExample
 
         static void HandleClientExit(Server serv, NetworkConnection connection, MessageHeader header)
         {
+            QuitMessage quitmsg = header as QuitMessage;
+
             if (serv.nameList.ContainsKey(connection))
             {
-                //serv.chat.NewMessage($"{serv.nameList[connection]} has left the chat.", ChatCanvas.leaveColor);
+                //Get Network ID van player
+                //Destroy PLayer
+                NetworkDestroyMessage destroyMsg = new NetworkDestroyMessage
+                {
+                    networkID = quitmsg.networkID
+                };
+                //BroadCast Destroy
+                serv.SendBroadcast(destroyMsg);
 
+                serv.networkManager.DestroyWithID(quitmsg.networkID);
                 connection.Disconnect(serv.m_Driver);
+                Debug.Log("Client ID: " + quitmsg.networkID + " Has Disconected");
+
             }
             else
             {
@@ -285,6 +307,19 @@ namespace ChatClientExample
             else
             {
                 Debug.LogError($"Received message from unlisted connection: {receivedMsg.message}");
+            }
+        }
+        static void HandleDestroyMessage(Server serv, NetworkConnection connection, MessageHeader header)
+        {
+            NetworkDestroyMessage msg = header as NetworkDestroyMessage;
+
+            if (serv.playerInstances.ContainsKey(connection))
+            {
+                if (serv.playerInstances[connection].networkId == msg.networkID)
+                {
+                    serv.networkManager.DestroyWithID(msg.networkID);
+                }
+
             }
         }
         public void SendBroadcast(MessageHeader header)

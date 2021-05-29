@@ -22,7 +22,6 @@ namespace ChatClientExample
 
         public virtual void DeserializeObject(ref DataStreamReader reader)
         {
-            
             ID = reader.ReadUInt();
         }
     }

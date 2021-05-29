@@ -15,7 +15,9 @@ namespace ChatClientExample
             { NetworkMessageType.HANDSHAKE_RESPONSE,    HandshakeResponseHandler },
             { NetworkMessageType.CHAT_MESSAGE,          HandleChatMessage },
             { NetworkMessageType.NETWORK_SPAWN,         HandleSpawnMessage },
-            { NetworkMessageType.INPUT_UPDATE,          HandleInputMessage }
+            { NetworkMessageType.INPUT_UPDATE,          HandleInputMessage },
+            { NetworkMessageType.NETWORK_DESTROY,       HandleDestroyMessage },
+
 
 
         };
@@ -45,7 +47,10 @@ namespace ChatClientExample
             m_Connection = m_Driver.Connect(endpoint);
 
         }
-
+        public void OnDisable()
+        {
+            Disconect();
+        }
         public void OnDestroy()
         {
             m_Driver.Dispose();
@@ -114,6 +119,9 @@ namespace ChatClientExample
             //SpawnPlayer
             HandshakeResponseMessage response = header as HandshakeResponseMessage;
 
+            client.clientID = response.clientID;
+            client.chat.InvokeMessage(response.message, client.chat.chatMessages);
+
             GameObject obj;
             if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID,new Vector3(0,0,0), out obj))
             {
@@ -147,6 +155,7 @@ namespace ChatClientExample
                                                 new Vector3(msg.posx,msg.posy,msg.posz),
                                                 out obj))
             {
+                client.chat.InvokeMessage("Client ID: " + msg.networkID, client.chat.chatMessages);
                 Debug.Log("Spawn Failed");
             }
             else
@@ -161,16 +170,24 @@ namespace ChatClientExample
                     obj.GetComponent<NetworkPlayer>().isServer = true;
 
                 }
+                obj.transform.position = new Vector3(msg.posx, msg.posy, msg.posz);
             }
         }
         static void HandleInputMessage(Client client, MessageHeader header)
         {
             InputUpdateMessage msg = header as InputUpdateMessage;
 
-            //client.networkManager.networkedReferences[msg.networkObjectID].transform.position = 
-            //    client.networkManager.networkedReferences[msg.networkObjectID].transform.position + new Vector3(msg.movex, 0 , msg.movez);
-
             client.networkManager.networkedReferences[msg.networkID].GetComponent<NetworkPlayer>().UpdateInput(msg.input);
+        }
+        static void HandleDestroyMessage(Client client, MessageHeader header)
+        {
+            NetworkDestroyMessage msg = header as NetworkDestroyMessage;
+
+            if (client.networkManager.networkedReferences.ContainsKey(msg.networkID))
+            {
+                client.networkManager.DestroyWithID(msg.networkID);
+            }
+
         }
         public void SendInput(InputUpdate myInput)
         {
@@ -194,19 +211,11 @@ namespace ChatClientExample
         }
         public void Disconect()
         {
-            DataStreamWriter writer;
-            int result = m_Driver.BeginSend(NetworkPipeline.Null, m_Connection, out writer);
-
-            //non-0 is an error code
-            if (result == 0)
+            QuitMessage quitGame = new QuitMessage
             {
-                writer.WriteUInt((uint)NetworkMessageType.CHAT_QUIT);
-                m_Driver.EndSend(writer);
-
-                //Done = true;
-                //m_Connection.Disconnect(m_Driver);
-                //m_Connection = default(NetworkConnection);
-            }
+                networkID = clientID
+            };
+            SendPackedMessage(quitGame);
         }
 
         public void ReadInputField(string input)

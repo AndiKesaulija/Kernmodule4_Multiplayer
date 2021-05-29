@@ -12,9 +12,9 @@ namespace ChatClientExample
         public uint networkID;
         public uint objectType;
 
-        public uint posx;
-        public uint posy;
-        public uint posz;
+        public float posx = 0;
+        public float posy = 0;
+        public float posz = 0;
 
 
         public override void SerializeObject(ref DataStreamWriter writer)
@@ -24,9 +24,9 @@ namespace ChatClientExample
             writer.WriteUInt(objectType);
 
 
-            writer.WriteUInt(posx);
-            writer.WriteUInt(posy);
-            writer.WriteUInt(posz);
+            writer.WriteFloat(posx);
+            writer.WriteFloat(posy);
+            writer.WriteFloat(posz);
         }
 
         public override void DeserializeObject(ref DataStreamReader reader)
@@ -35,9 +35,9 @@ namespace ChatClientExample
             networkID = reader.ReadUInt();
             objectType = reader.ReadUInt();
 
-            posx = reader.ReadUInt();
-            posy = reader.ReadUInt();
-            posz = reader.ReadUInt();
+            posx = reader.ReadFloat();
+            posy = reader.ReadFloat();
+            posz = reader.ReadFloat();
         }
     }
 }
