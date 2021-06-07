@@ -12,16 +12,17 @@ public class NetworkManager : MonoBehaviour
     
     public Dictionary<uint, GameObject> networkedReferences = new Dictionary<uint, GameObject>();
 
-    public bool GetObjectID(uint id, out GameObject obj)
+    public bool GetObjectID(uint networkID, out GameObject obj)
     {
         obj = null;
-        if (networkedReferences.ContainsKey(id))
+        if (networkedReferences.ContainsKey(networkID))
         {
+            obj = networkedReferences[networkID];
             return true;
         }
         return false;
     }
-    public bool SpawnWithID(NetworkSpawnObject type, uint id,Vector3 pos, out GameObject obj)
+    public bool SpawnWithID(NetworkSpawnObject type, uint id,uint teamID,Vector3 pos, out GameObject obj)
     {
         obj = null;
         if (networkedReferences.ContainsKey(id))
@@ -39,9 +40,13 @@ public class NetworkManager : MonoBehaviour
                 netObj = obj.AddComponent<NetworkObject>();
             }
             netObj.networkID = id;
+            netObj.teamID = teamID;
+            netObj.type = type;
+
+            obj.transform.position = pos;
 
             networkedReferences.Add(id, obj);
-            Debug.Log("SpawnWithID: " + id);
+            Debug.Log($"SpawnWithID: {id} TeamID: {teamID}");
             return true;
         }
     }
@@ -54,5 +59,10 @@ public class NetworkManager : MonoBehaviour
             return true;
         }
         return false;
+    }
+    public uint GetNextID()
+    {
+        uint id = NetworkManager.NextNetworkID;
+        return id;
     }
 }

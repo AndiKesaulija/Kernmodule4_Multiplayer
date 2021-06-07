@@ -11,10 +11,10 @@ namespace ChatClientExample
 
         public uint networkID;
         public uint objectType;
+        public uint teamID = 0;
 
-        public float posx = 0;
-        public float posy = 0;
-        public float posz = 0;
+
+        public Vector3 pos;
 
 
         public override void SerializeObject(ref DataStreamWriter writer)
@@ -22,11 +22,11 @@ namespace ChatClientExample
             base.SerializeObject(ref writer);
             writer.WriteUInt(networkID);
             writer.WriteUInt(objectType);
+            writer.WriteUInt(teamID);
 
-
-            writer.WriteFloat(posx);
-            writer.WriteFloat(posy);
-            writer.WriteFloat(posz);
+            writer.WriteFloat(pos.x);
+            writer.WriteFloat(pos.y);
+            writer.WriteFloat(pos.z);
         }
 
         public override void DeserializeObject(ref DataStreamReader reader)
@@ -34,10 +34,10 @@ namespace ChatClientExample
             base.DeserializeObject(ref reader);
             networkID = reader.ReadUInt();
             objectType = reader.ReadUInt();
+            teamID = reader.ReadUInt();
 
-            posx = reader.ReadFloat();
-            posy = reader.ReadFloat();
-            posz = reader.ReadFloat();
+            pos = new Vector3(reader.ReadFloat(), reader.ReadFloat(), reader.ReadFloat());
+            
         }
     }
 }

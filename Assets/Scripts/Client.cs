@@ -17,13 +17,11 @@ namespace ChatClientExample
             { NetworkMessageType.NETWORK_SPAWN,         HandleSpawnMessage },
             { NetworkMessageType.INPUT_UPDATE,          HandleInputMessage },
             { NetworkMessageType.NETWORK_DESTROY,       HandleDestroyMessage },
-
-
+            { NetworkMessageType.RPC,                   HandleRPCMessage },
 
         };
 
 
-        public uint clientID;
 
         public NetworkDriver m_Driver;
         public NetworkConnection m_Connection;
@@ -119,11 +117,10 @@ namespace ChatClientExample
             //SpawnPlayer
             HandshakeResponseMessage response = header as HandshakeResponseMessage;
 
-            client.clientID = response.clientID;
             client.chat.InvokeMessage(response.message, client.chat.chatMessages);
 
             GameObject obj;
-            if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID,new Vector3(0,0,0), out obj))
+            if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID, response.networkID, new Vector3(0,0,0), out obj))
             {
                 NetworkPlayer player = obj.GetComponent<NetworkPlayer>();
                 player.isLocal = true;
@@ -148,11 +145,13 @@ namespace ChatClientExample
         {
             NetworkSpawnMessage msg = header as NetworkSpawnMessage;
 
+            Debug.Log(msg.networkID);
             GameObject obj;
             if(!client.networkManager.SpawnWithID(
                                                 (NetworkSpawnObject)msg.objectType,
                                                 msg.networkID,
-                                                new Vector3(msg.posx,msg.posy,msg.posz),
+                                                msg.teamID,
+                                                msg.pos,
                                                 out obj))
             {
                 client.chat.InvokeMessage("Client ID: " + msg.networkID, client.chat.chatMessages);
@@ -160,17 +159,7 @@ namespace ChatClientExample
             }
             else
             {
-                Debug.Log("Spawn Player:" + msg.networkID + "Pos: " + new Vector3(msg.posx, msg.posy, msg.posz));
-                if(msg.networkID == client.clientID)
-                {
-                    obj.GetComponent<NetworkPlayer>().isLocal = true;
-                }
-                else
-                {
-                    obj.GetComponent<NetworkPlayer>().isServer = true;
-
-                }
-                obj.transform.position = new Vector3(msg.posx, msg.posy, msg.posz);
+                obj.transform.position = msg.pos;
             }
         }
         static void HandleInputMessage(Client client, MessageHeader header)
@@ -189,15 +178,22 @@ namespace ChatClientExample
             }
 
         }
-        public void SendInput(InputUpdate myInput)
+        static void HandleRPCMessage(Client client, MessageHeader header)
         {
-            InputUpdateMessage msg = new InputUpdateMessage
-            {
-                networkID = clientID,
-                input = myInput
-            };
+            RPCMessage msg = header as RPCMessage;
 
-            SendPackedMessage(msg);
+            //Try to call function
+            try
+            {
+                msg.mInfo.Invoke(msg.target, msg.data);
+            }
+            catch (System.Exception e)
+            {
+                Debug.Log(e.Message);
+                Debug.Log(e.StackTrace);
+            }
+
+
         }
 
         public void SendMyMessage()
@@ -213,7 +209,7 @@ namespace ChatClientExample
         {
             QuitMessage quitGame = new QuitMessage
             {
-                networkID = clientID
+                //networkID = clientID
             };
             SendPackedMessage(quitGame);
         }
@@ -224,7 +220,18 @@ namespace ChatClientExample
         }
 
         
-        
+        public void CallOnServerObject(string function, NetworkObject target, params object[] data)
+        {
+
+            RPCMessage RPCmsg = new RPCMessage
+            {
+                target = target,
+                methodName = "Fire",
+                data = data
+            };
+
+            SendPackedMessage(RPCmsg);
+        }
         public void SendPackedMessage(MessageHeader header)
         {
             DataStreamWriter writer;

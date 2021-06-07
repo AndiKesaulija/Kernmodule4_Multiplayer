@@ -5,4 +5,9 @@ using UnityEngine;
 public class NetworkObject : MonoBehaviour
 {
     public uint networkID = 0;
+    public uint teamID = 0;
+    public NetworkSpawnObject type;
+
+    public bool isServer = false;
+    public bool isLocal = false;
 }
