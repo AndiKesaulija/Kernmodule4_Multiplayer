@@ -57,6 +57,11 @@ namespace ChatClientExample
                     writer.WriteFloat(vec.y);
                     writer.WriteFloat(vec.z);
                 }
+                else if (parameters[i].ParameterType == typeof(IEnumerable))
+                {
+                    writer.WriteInt((int)data[i]);
+                }
+
                 else
                 {
                     throw new System.ArgumentException($"Unhandled RPC type: {parameters[i].ParameterType.ToString()}");
@@ -97,7 +102,7 @@ namespace ChatClientExample
             data = new object[parameters.Length];
             data[0] = Object.FindObjectOfType<Server>();
 
-            Debug.Log(data[0]);
+
             //Skip parameters[0] == Server
             for (int i = 1; i < parameters.Length; i++)
             {
@@ -116,6 +121,10 @@ namespace ChatClientExample
                 else if (parameters[i].ParameterType == typeof(Vector3))
                 {
                     data[i] = new Vector3(reader.ReadFloat(), reader.ReadFloat(), reader.ReadFloat());
+                }
+                else if( parameters[i].ParameterType == typeof(IEnumerable))
+                {
+                    data[i] = reader.ReadInt();
                 }
                 else
                 {

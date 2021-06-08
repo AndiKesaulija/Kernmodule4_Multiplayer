@@ -64,20 +64,24 @@ namespace ChatClientExample
 
                 client.SendPackedMessage(msg);
 
-                if (Input.GetMouseButtonDown(1))
+                if (Input.GetMouseButtonDown(0))
                 {
-                    //Debug.Log("MouseDown");
+                    Debug.Log("MouseDown");
 
-                    //RPCMessage RPCmsg = new RPCMessage
-                    //{
-                    //    target = this,
-                    //    methodName = "Fire",
-                    //    data = new object[] {null,transform.position}
-                    //};
+                    RPCMessage RPCmsg = new RPCMessage
+                    {
+                        target = this,
+                        methodName = "Fire",
+                        data = new object[] { null, transform.position }
+                    };
 
-                    //client.SendPackedMessage(RPCmsg);
+                    client.SendPackedMessage(RPCmsg);
 
                     client.CallOnServerObject("Fire", this, null, transform.position);
+                }
+                if (Input.GetMouseButtonDown(1))
+                {
+                    client.CallOnServerObject("SetPlayerState", this, null, ClientState.READY);
                 }
 
             }
@@ -135,6 +139,16 @@ namespace ChatClientExample
             };
 
             serv.SendBroadcast(msg);
+        }
+
+        public void SetPlayerState(Server serv, int state)
+        {
+            //Set Ready
+            serv.server_UI.playerInfo[networkID].state = (ClientState)state;
+
+            //UpdatePlayerCard
+            serv.server_UI.UpdatePlayerCard(networkID);
+
         }
     }
 }

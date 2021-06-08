@@ -31,8 +31,12 @@ namespace ChatClientExample
         public ChatCanvas chat;
 
         public NetworkManager networkManager;
+        public Client_UI client_UI;
+        public string clientName = "Player_Name";
 
+        public uint clientID;
         private InputUpdate myInput;
+        private uint teamID;
 
         void Start()
         {
@@ -77,7 +81,7 @@ namespace ChatClientExample
 
                     var header = new HandshakeMessage
                     {
-                        name = "Andi"
+                        name = clientName
                     };
                     SendPackedMessage(header);
                 }
@@ -118,18 +122,19 @@ namespace ChatClientExample
             HandshakeResponseMessage response = header as HandshakeResponseMessage;
 
             client.chat.InvokeMessage(response.message, client.chat.chatMessages);
+            client.clientID = response.clientID;
 
-            GameObject obj;
-            if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID, response.networkID, new Vector3(0,0,0), out obj))
-            {
-                NetworkPlayer player = obj.GetComponent<NetworkPlayer>();
-                player.isLocal = true;
-                player.isServer = false;
-            }
-            else
-            {
-                Debug.LogError("Could not spawn player!");
-            }
+            //GameObject obj;
+            //if (client.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, response.networkID, response.networkID, new Vector3(0, 0, 0), out obj))
+            //{
+            //    NetworkPlayer player = obj.GetComponent<NetworkPlayer>();
+            //    player.isLocal = true;
+            //    player.isServer = false;
+            //}
+            //else
+            //{
+            //    Debug.LogError("Could not spawn player!");
+            //}
 
 
         }
@@ -196,6 +201,27 @@ namespace ChatClientExample
 
         }
 
+
+
+        //Client functions
+        public void SelectTeam(int teamNum)
+        {
+            ClientInfoMessage msg = new ClientInfoMessage
+            {
+                clientID = clientID,
+                teamNum = (uint)teamNum
+            };
+            SendPackedMessage(msg);
+            client_UI.CloseWindow(client_UI.window_TeamSelection);
+
+        }
+
+        public void SetTeam(Server serv, int teamNum)
+        {
+            serv.server_UI.playerInfo[clientID].teamNum = (uint)teamNum;
+        }
+
+        
         public void SendMyMessage()
         {
             ChatMessage chatMsg = new ChatMessage
@@ -219,19 +245,7 @@ namespace ChatClientExample
             myMessage = input;
         }
 
-        
-        public void CallOnServerObject(string function, NetworkObject target, params object[] data)
-        {
 
-            RPCMessage RPCmsg = new RPCMessage
-            {
-                target = target,
-                methodName = "Fire",
-                data = data
-            };
-
-            SendPackedMessage(RPCmsg);
-        }
         public void SendPackedMessage(MessageHeader header)
         {
             DataStreamWriter writer;
@@ -248,6 +262,21 @@ namespace ChatClientExample
                 Debug.LogError($"Could not wrote message to driver: {result}", this);
             }
         }
+
+        //RPC
+        public void CallOnServerObject(string function, NetworkObject target, params object[] data)
+        {
+
+            RPCMessage RPCmsg = new RPCMessage
+            {
+                target = target,
+                methodName = function,
+                data = data
+            };
+
+            SendPackedMessage(RPCmsg);
+        }
+       
 
 
     }

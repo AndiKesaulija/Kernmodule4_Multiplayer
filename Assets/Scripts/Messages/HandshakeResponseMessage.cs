@@ -12,8 +12,8 @@ namespace ChatClientExample
         public override NetworkMessageType Type { get { return NetworkMessageType.HANDSHAKE_RESPONSE; } }
 
         public string message;
-        //public uint clientID;
-        public uint networkID;
+        public uint clientID;
+        //public uint networkID;
 
         public override void SerializeObject(ref DataStreamWriter writer)
         {
@@ -21,7 +21,7 @@ namespace ChatClientExample
 
             //writer.WriteUInt(clientID);
             writer.WriteFixedString128(new FixedString128($"Welcome {message.ToString()}!"));
-            writer.WriteUInt(networkID);
+            writer.WriteUInt(clientID);
         }
         public override void DeserializeObject(ref DataStreamReader reader)
         {
@@ -30,7 +30,7 @@ namespace ChatClientExample
 
             //clientID = reader.ReadUInt();
             message = reader.ReadFixedString128().ToString();
-            networkID = reader.ReadUInt();
+            clientID = reader.ReadUInt();
         }
 
 

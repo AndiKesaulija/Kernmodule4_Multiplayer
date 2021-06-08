@@ -22,7 +22,9 @@ namespace ChatClientExample
         NETWORK_DESTROY,
         INPUT_UPDATE,
         GAME_QUIT,
-        RPC
+        RPC,
+        CLIENT_STATE,
+        CLIENT_INFO
     }
 
     public static class NetworkMessageInfo
@@ -38,8 +40,12 @@ namespace ChatClientExample
             { NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
             //{ NetworkMessageType.PING,                      typeof(PingMessage) },
             //{ NetworkMessageType.PONG,                      typeof(PongMessage) }
-            { NetworkMessageType.GAME_QUIT,                      typeof(QuitMessage) },
-            { NetworkMessageType.RPC,                      typeof(RPCMessage) },
+            { NetworkMessageType.GAME_QUIT,                 typeof(QuitMessage) },
+            { NetworkMessageType.RPC,                       typeof(RPCMessage) },
+            { NetworkMessageType.CLIENT_STATE,              typeof(ClientStateMessage) },
+            { NetworkMessageType.CLIENT_INFO,              typeof(ClientInfoMessage) },
+
+
 
         };
     }
@@ -48,13 +54,15 @@ namespace ChatClientExample
     {
 
         static Dictionary<NetworkMessageType, ServerMessageHandler> networkMessageHandlers = new Dictionary<NetworkMessageType, ServerMessageHandler> {
-            { NetworkMessageType.HANDSHAKE, HandleClientHandshake },
-            { NetworkMessageType.CHAT_MESSAGE, HandleClientMessage },
-            { NetworkMessageType.GAME_QUIT, HandleClientExit },
-            { NetworkMessageType.INPUT_UPDATE, HandleInputMessage },
-            { NetworkMessageType.NETWORK_SPAWN, HandleSpawnMessage },
-            { NetworkMessageType.NETWORK_DESTROY, HandleDestroyMessage },
-            { NetworkMessageType.RPC, HandleRPCMessage },
+            { NetworkMessageType.HANDSHAKE,                 HandleClientHandshake },
+            { NetworkMessageType.CHAT_MESSAGE,              HandleClientMessage },
+            { NetworkMessageType.GAME_QUIT,                 HandleClientExit },
+            { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
+            { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
+            { NetworkMessageType.NETWORK_DESTROY,           HandleDestroyMessage },
+            { NetworkMessageType.RPC,                       HandleRPCMessage },
+            { NetworkMessageType.CLIENT_INFO,               HandleClientInfoMessage },
+
 
         };
 
@@ -66,6 +74,8 @@ namespace ChatClientExample
         private Dictionary<NetworkConnection, NetworkPlayer> playerInstances = new Dictionary<NetworkConnection, NetworkPlayer>();
 
         public NetworkManager networkManager;
+        public Server_LobbyManager lobbyManager;
+        public Server_UI server_UI;
 
         void Start()
         {
@@ -155,79 +165,98 @@ namespace ChatClientExample
 
             // Add to list
             serv.nameList.Add(connection, message.name);
-            string msg = $"{message.name.ToString()} has joined the chat.";
+            string msg = $"{message.name.ToString()} has joined the Game.";
             Debug.Log($"{msg.ToString()} has joined the chat.");
+            
+            uint clientID = NetworkManager.NextNetworkID;
 
-            //Spawn LOCAL Player Object
-            GameObject newPlayer;
-            uint networkId = NetworkManager.NextNetworkID;
-            //Temp TeamID: networkId
-            if (serv.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkId, networkId, new Vector3(0,0,0), out newPlayer))
+            //Add client to LobbyManager
+            PlayerInfo info = new PlayerInfo
             {
-                NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
-                playerInstance.isServer = true;
-                playerInstance.isLocal = false;
+                clientID = clientID,
+                playerID = 0,
+                playerName = message.name,
+                state = ClientState.NOT_READY,
+                teamNum = 0
+            };
 
-                playerInstance.teamID = playerInstance.networkID;//Temp TeamID
-                networkId = playerInstance.networkID;
+            //Add Client to Server_UI
+            serv.server_UI.AddPlayerCard(info);
 
-                serv.playerInstances.Add(connection, playerInstance);
-
-                // Send spawn local player back to sender
-                HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
-                {
-                    //clientID = NetworkManager.NextNetworkID,
-                    message = $"Welcome {message.name.ToString()}!",
-                    networkID = playerInstance.networkID,
-
-
-                };
-
-                serv.SendReply(connection, responseMsg);
-
-            }
-            else
+            HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
             {
-                Debug.LogError("Could not spawn player instance");
-            }
+                message = $"Welcome {message.name.ToString()}!",
+                clientID = clientID,
+            };
+            serv.SendReply(connection, responseMsg);
 
-            // Send all existing players to this player
-            foreach (KeyValuePair<NetworkConnection, NetworkPlayer> pair in serv.playerInstances)
-            {
-                if (pair.Key == connection) 
-                {
-                    Debug.Log($"Same Key: {pair.Key} {connection}");
-                    continue; 
-                }
+            ////Spawn LOCAL Player Object
+            //GameObject newPlayer;
+            //if (serv.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkId, networkId, new Vector3(0, 0, 0), out newPlayer))
+            //{
+            //    NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
+            //    playerInstance.isServer = true;
+            //    playerInstance.isLocal = false;
 
-                NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
-                {
-                    networkID = pair.Value.networkID,
-                    objectType = (uint)NetworkSpawnObject.PLAYER,
-                    pos = pair.Value.transform.position
-                };
+            //    playerInstance.teamID = playerInstance.networkID;//Temp TeamID
+            //    networkId = playerInstance.networkID;
 
-                serv.SendReply(connection, spawnMsg);
-            }
+            //    serv.playerInstances.Add(connection, playerInstance);
 
-            // Send creation of this player to all existing players
-            if (networkId != 0)
-            {
-                for (int i = 0; i < serv.m_Connections.Length; i++)
-                {
-                    NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
-                    {
-                        networkID = networkId,
-                        objectType = (uint)NetworkSpawnObject.PLAYER
-                    };
-                    serv.SendReply(serv.m_Connections[i], spawnMsg);
-                }
+            //    // Send spawn local player back to sender
+            //    HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
+            //    {
+            //        //clientID = NetworkManager.NextNetworkID,
+            //        message = $"Welcome {message.name.ToString()}!",
+            //        networkID = playerInstance.networkID,
 
-            }
-            else
-            {
-                Debug.LogError("Invalid network id for broadcasting creation");
-            }
+            //    };
+
+            //    serv.SendReply(connection, responseMsg);
+
+            //}
+            //else
+            //{
+            //    Debug.LogError("Could not spawn player instance");
+            //}
+
+            //// Send all existing players to this player
+            //foreach (KeyValuePair<NetworkConnection, NetworkPlayer> pair in serv.playerInstances)
+            //{
+            //    if (pair.Key == connection)
+            //    {
+            //        Debug.Log($"Same Key: {pair.Key} {connection}");
+            //        continue;
+            //    }
+
+            //    NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
+            //    {
+            //        networkID = pair.Value.networkID,
+            //        objectType = (uint)NetworkSpawnObject.PLAYER,
+            //        pos = pair.Value.transform.position
+            //    };
+
+            //    serv.SendReply(connection, spawnMsg);
+            //}
+
+            //// Send creation of this player to all existing players
+            //if (networkId != 0)
+            //{
+            //    for (int i = 0; i < serv.m_Connections.Length; i++)
+            //    {
+            //        NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
+            //        {
+            //            networkID = networkId,
+            //            objectType = (uint)NetworkSpawnObject.PLAYER
+            //        };
+            //        serv.SendReply(serv.m_Connections[i], spawnMsg);
+            //    }
+
+            //}
+            //else
+            //{
+            //    Debug.LogError("Invalid network id for broadcasting creation");
+            //}
 
 
 
@@ -326,6 +355,7 @@ namespace ChatClientExample
         {
             RPCMessage msg = header as RPCMessage;
 
+            Debug.Log($"RPC: {msg.methodName}");
             //Try to call function
             try
             {
@@ -338,6 +368,14 @@ namespace ChatClientExample
 
 
         }
+        static void HandleClientInfoMessage(Server serv, NetworkConnection connection, MessageHeader header)
+        {
+            ClientInfoMessage msg = header as ClientInfoMessage;
+
+            Debug.Log($"ClientID: {msg.clientID} TeamNumber: {msg.teamNum}");
+            serv.server_UI.playerInfo[msg.clientID].teamNum = msg.teamNum;
+            serv.server_UI.UpdatePlayerCard(msg.clientID);
+        }
         static void HandleSpawnMessage(Server serv, NetworkConnection connection, MessageHeader header)
         {
             NetworkSpawnMessage msg = header as NetworkSpawnMessage;
@@ -349,6 +387,7 @@ namespace ChatClientExample
                 serv.SendBroadcast(msg);
             }
         }
+
         public void SendBroadcast(MessageHeader header)
         {
             Debug.Log($"Msg Send {header.Type} to {m_Connections.Length} Clients");
