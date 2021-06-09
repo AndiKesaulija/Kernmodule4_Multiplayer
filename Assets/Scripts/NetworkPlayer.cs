@@ -81,7 +81,7 @@ namespace ChatClientExample
                 }
                 if (Input.GetMouseButtonDown(1))
                 {
-                    client.CallOnServerObject("SetPlayerState", this, null, ClientState.READY);
+                    //client.CallOnServerObject("SetPlayerState", this, null, ClientState.READY);
                 }
 
             }
@@ -144,10 +144,11 @@ namespace ChatClientExample
         public void SetPlayerState(Server serv, int state)
         {
             //Set Ready
-            serv.server_UI.playerInfo[networkID].state = (ClientState)state;
+            //serv.server_UI.playerInfo[networkID].state = (ClientState)state;
+            serv.server_UI.SetReady(networkID, state);
 
             //UpdatePlayerCard
-            serv.server_UI.UpdatePlayerCard(networkID);
+            //serv.server_UI.UpdatePlayerCard(networkID);
 
         }
     }

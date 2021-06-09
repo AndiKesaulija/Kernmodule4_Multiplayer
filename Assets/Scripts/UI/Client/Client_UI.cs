@@ -9,6 +9,11 @@ namespace ChatClientExample
     {
 
         public Image window_TeamSelection;
+        public Button joinRed;
+        public Button joinBlue;
+
+        public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
+        public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
         // Start is called before the first frame update
         void Start()
         {
@@ -18,13 +23,31 @@ namespace ChatClientExample
         // Update is called once per frame
         void Update()
         {
+            if(ServerSettings.redTeamPlayerCount >= ServerSettings.maxTeamPlayerCount)
+            {
+                joinRed.interactable = false;
+            }
+            else
+            {
+                joinRed.interactable = true;
+
+            }
+            if (ServerSettings.blueTeamPlayerCount >= ServerSettings.maxTeamPlayerCount)
+            {
+                joinBlue.interactable = false;
+            }
+            else
+            {
+                joinBlue.interactable = true;
+            }
 
         }
-        public void SelectTeamRed()
+        public void UpdateServerSettings()
         {
-
-            CloseWindow(window_TeamSelection);
+            redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
+            blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
         }
+        
         public void CloseWindow(Image window)
         {
             window.gameObject.SetActive(false);

@@ -12,12 +12,16 @@ namespace ChatClientExample
     {
         static Dictionary<NetworkMessageType, ClientMessageHandler> networkMessageHandlers = new Dictionary<NetworkMessageType, ClientMessageHandler>() {
             // link game events to functions...
-            { NetworkMessageType.HANDSHAKE_RESPONSE,    HandshakeResponseHandler },
-            { NetworkMessageType.CHAT_MESSAGE,          HandleChatMessage },
-            { NetworkMessageType.NETWORK_SPAWN,         HandleSpawnMessage },
-            { NetworkMessageType.INPUT_UPDATE,          HandleInputMessage },
-            { NetworkMessageType.NETWORK_DESTROY,       HandleDestroyMessage },
-            { NetworkMessageType.RPC,                   HandleRPCMessage },
+            { NetworkMessageType.HANDSHAKE_RESPONSE,        HandshakeResponseHandler },
+            { NetworkMessageType.CHAT_MESSAGE,              HandleChatMessage },
+            { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
+            { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
+            { NetworkMessageType.NETWORK_DESTROY,           HandleDestroyMessage },
+            { NetworkMessageType.RPC,                       HandleRPCMessage },
+            { NetworkMessageType.SERVER_INFO,               HandleServerInfoMessage },
+            { NetworkMessageType.PING,                      HandlePing },
+
+
 
         };
 
@@ -37,6 +41,8 @@ namespace ChatClientExample
         public uint clientID;
         private InputUpdate myInput;
         private uint teamID;
+
+
 
         void Start()
         {
@@ -200,8 +206,20 @@ namespace ChatClientExample
 
 
         }
+        static void HandlePing(Client client, MessageHeader header)
+        {
+            Debug.Log("PING");
 
+            PongMessage pongMsg = new PongMessage();
+            client.SendPackedMessage(pongMsg);
+        }
 
+        static void HandleServerInfoMessage(Client client, MessageHeader header)
+        {
+            ServerInfoMessage msg = header as ServerInfoMessage;
+
+            client.client_UI.UpdateServerSettings();
+        }
 
         //Client functions
         public void SelectTeam(int teamNum)
@@ -218,7 +236,7 @@ namespace ChatClientExample
 
         public void SetTeam(Server serv, int teamNum)
         {
-            serv.server_UI.playerInfo[clientID].teamNum = (uint)teamNum;
+            serv.server_UI.playerInfo[clientID].team = (Team)teamNum;
         }
 
         

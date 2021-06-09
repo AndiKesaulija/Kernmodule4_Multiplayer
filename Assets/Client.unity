@@ -402,6 +402,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   window_TeamSelection: {fileID: 634546070}
+  joinRed: {fileID: 922708028}
+  joinBlue: {fileID: 1989256067}
+  redTeamCounter: 2
+  blueTeamCounter: 0
 --- !u!1 &164772501
 GameObject:
   m_ObjectHideFlags: 0
@@ -714,7 +718,6 @@ GameObject:
   - component: {fileID: 288692677}
   - component: {fileID: 288692676}
   - component: {fileID: 288692675}
-  - component: {fileID: 288692678}
   m_Layer: 5
   m_Name: SendButton
   m_TagString: Untagged
@@ -836,27 +839,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 288692673}
   m_CullTransparentMesh: 1
---- !u!223 &288692678
-Canvas:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 288692673}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_RenderMode: 2
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
-  m_PixelPerfect: 0
-  m_ReceivesEvents: 1
-  m_OverrideSorting: 0
-  m_OverridePixelPerfect: 0
-  m_SortingBucketNormalizedSize: 0
-  m_AdditionalShaderChannelsFlag: 0
-  m_SortingLayerID: 0
-  m_SortingOrder: 0
-  m_TargetDisplay: 0
 --- !u!1 &322654770
 GameObject:
   m_ObjectHideFlags: 0
@@ -1538,7 +1520,6 @@ GameObject:
   - component: {fileID: 1006436092}
   - component: {fileID: 1006436095}
   - component: {fileID: 1006436094}
-  - component: {fileID: 1006436093}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -1565,26 +1546,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1006436093
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1006436091}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95075d805c1b7ee4ca14ab33dbfe5416, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chatMessages:
-  - 
-  - 
-  - 
-  - 
-  - 
-  chat: 
-  text: {fileID: 0}
 --- !u!114 &1006436094
 MonoBehaviour:
   m_ObjectHideFlags: 0
