@@ -145,7 +145,7 @@ namespace ChatClientExample
         {
             //Set Ready
             //serv.server_UI.playerInfo[networkID].state = (ClientState)state;
-            serv.server_UI.SetReady(networkID, state);
+            serv.server_UI.SetReady(serv, networkID, state);
 
             //UpdatePlayerCard
             //serv.server_UI.UpdatePlayerCard(networkID);

@@ -9,18 +9,22 @@ namespace ChatClientExample
 	{
 		public override NetworkMessageType Type { get { return NetworkMessageType.PONG; } }
 
-		public uint networkId;
+		public uint clientID;
 
 		public override void SerializeObject(ref DataStreamWriter writer)
 		{
 			// very important to call this first
 			base.SerializeObject(ref writer);
+
+			writer.WriteUInt(clientID);
 		}
 
 		public override void DeserializeObject(ref DataStreamReader reader)
 		{
 			// very important to call this first
 			base.DeserializeObject(ref reader);
+
+			clientID = reader.ReadUInt();
 		}
 	}
 }

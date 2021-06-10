@@ -15,6 +15,7 @@ namespace ChatClientExample
             { NetworkMessageType.HANDSHAKE_RESPONSE,        HandshakeResponseHandler },
             { NetworkMessageType.CHAT_MESSAGE,              HandleChatMessage },
             { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
+            { NetworkMessageType.PLAYER_SPAWN,              HandlePlayerSpawnMessage },
             { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
             { NetworkMessageType.NETWORK_DESTROY,           HandleDestroyMessage },
             { NetworkMessageType.RPC,                       HandleRPCMessage },
@@ -152,11 +153,35 @@ namespace ChatClientExample
             client.chat.InvokeMessage(msg.message, client.chat.chatMessages);
 
         }
+        static void HandlePlayerSpawnMessage(Client client, MessageHeader header)
+        {
+            NetworkPlayerSpawnMessage msg = header as NetworkPlayerSpawnMessage;
+
+            GameObject obj;
+            if (!client.networkManager.SpawnWithID(
+                                                (NetworkSpawnObject)msg.objectType,
+                                                msg.networkID,
+                                                msg.teamID,
+                                                msg.pos,
+                                                out obj))
+            {
+                Debug.Log("Spawn Failed");
+            }
+            else
+            {
+                NetworkPlayer player = obj.GetComponent<NetworkPlayer>();
+                player.isLocal = true;
+                player.isServer = false;
+
+                obj.transform.position = msg.pos;
+
+                client.chat.InvokeMessage("Client ID: " + msg.networkID, client.chat.chatMessages);
+            }
+        }
         static void HandleSpawnMessage(Client client, MessageHeader header)
         {
             NetworkSpawnMessage msg = header as NetworkSpawnMessage;
 
-            Debug.Log(msg.networkID);
             GameObject obj;
             if(!client.networkManager.SpawnWithID(
                                                 (NetworkSpawnObject)msg.objectType,
@@ -165,7 +190,6 @@ namespace ChatClientExample
                                                 msg.pos,
                                                 out obj))
             {
-                client.chat.InvokeMessage("Client ID: " + msg.networkID, client.chat.chatMessages);
                 Debug.Log("Spawn Failed");
             }
             else
@@ -176,7 +200,6 @@ namespace ChatClientExample
         static void HandleInputMessage(Client client, MessageHeader header)
         {
             InputUpdateMessage msg = header as InputUpdateMessage;
-
             client.networkManager.networkedReferences[msg.networkID].GetComponent<NetworkPlayer>().UpdateInput(msg.input);
         }
         static void HandleDestroyMessage(Client client, MessageHeader header)
@@ -210,7 +233,11 @@ namespace ChatClientExample
         {
             Debug.Log("PING");
 
-            PongMessage pongMsg = new PongMessage();
+            PongMessage pongMsg = new PongMessage
+            {
+                clientID = client.clientID
+            };
+
             client.SendPackedMessage(pongMsg);
         }
 
@@ -236,7 +263,7 @@ namespace ChatClientExample
 
         public void SetTeam(Server serv, int teamNum)
         {
-            serv.server_UI.playerInfo[clientID].team = (Team)teamNum;
+            serv.playerInfo[clientID].team = (Team)teamNum;
         }
 
         

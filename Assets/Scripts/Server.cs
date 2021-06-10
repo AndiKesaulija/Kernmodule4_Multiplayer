@@ -11,6 +11,11 @@ namespace ChatClientExample
 
     public delegate void ServerMessageHandler(Server server, NetworkConnection con, MessageHeader header);
     public delegate void ClientMessageHandler(Client client, MessageHeader header);
+    public enum GameState
+    {
+        LOBBY,
+        IN_GAME
+    }
     public enum NetworkMessageType
     {
         HANDSHAKE,
@@ -19,6 +24,7 @@ namespace ChatClientExample
         CHAT_MESSAGE_RESPONSE,
         CHAT_QUIT,
         NETWORK_SPAWN,
+        PLAYER_SPAWN,
         NETWORK_DESTROY,
         INPUT_UPDATE,
         GAME_QUIT,
@@ -27,10 +33,12 @@ namespace ChatClientExample
         CLIENT_INFO,
         SERVER_INFO,
         PING,
-        PONG
+        PONG,
+        REQUEST
     }
     public class PingPong
     {
+        public uint clientID;
         public float lastSendTime = 0;
         public int status = -1;
         public string name = ""; // because of weird issues...
@@ -43,6 +51,7 @@ namespace ChatClientExample
             { NetworkMessageType.CHAT_MESSAGE,              typeof(ChatMessage) },
             //{ NetworkMessageType.CHAT_QUIT,                 typeof(ChatQuitMessage) },
             { NetworkMessageType.NETWORK_SPAWN,             typeof(NetworkSpawnMessage) },
+            { NetworkMessageType.PLAYER_SPAWN,              typeof(NetworkPlayerSpawnMessage) },
             { NetworkMessageType.NETWORK_DESTROY,           typeof(NetworkDestroyMessage) },
             //{ NetworkMessageType.NETWORK_UPDATE_POSITION,   typeof(UpdatePositionMessage) },
             { NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
@@ -51,8 +60,8 @@ namespace ChatClientExample
             { NetworkMessageType.GAME_QUIT,                 typeof(QuitMessage) },
             { NetworkMessageType.RPC,                       typeof(RPCMessage) },
             { NetworkMessageType.CLIENT_STATE,              typeof(ClientStateMessage) },
-            { NetworkMessageType.CLIENT_INFO,              typeof(ClientInfoMessage) },
-            { NetworkMessageType.SERVER_INFO,              typeof(ServerInfoMessage) },
+            { NetworkMessageType.CLIENT_INFO,               typeof(ClientInfoMessage) },
+            { NetworkMessageType.SERVER_INFO,               typeof(ServerInfoMessage) },
 
 
 
@@ -87,12 +96,17 @@ namespace ChatClientExample
         private Dictionary<NetworkConnection, NetworkPlayer> playerInstances = new Dictionary<NetworkConnection, NetworkPlayer>();
         private Dictionary<NetworkConnection, PingPong> pongDict = new Dictionary<NetworkConnection, PingPong>();
 
+        public Dictionary<uint, PlayerInfo> playerInfo = new Dictionary<uint, PlayerInfo>();
+
         public NetworkManager networkManager;
         //public Server_LobbyManager lobbyManager;
         public Server_UI server_UI;
+        public GameState gameState;
 
         void Start()
         {
+            gameState = GameState.LOBBY;
+
             // Create Driver
             m_Driver = NetworkDriver.Create(new ReliableUtility.Parameters { WindowSize = 32 });
             m_Pipeline = m_Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
@@ -111,6 +125,8 @@ namespace ChatClientExample
         {
             m_Driver.Dispose();
             m_Connections.Dispose();
+
+            
         }
 
         void Update()
@@ -174,33 +190,7 @@ namespace ChatClientExample
             }
 
 
-            //TEST START GAME
-            if (ServerSettings.redTeamPlayerCount == ServerSettings.maxTeamPlayerCount && ServerSettings.blueTeamPlayerCount == ServerSettings.maxTeamPlayerCount)
-            {
-                bool allReady = false;
-
-                foreach(KeyValuePair<uint,PlayerInfo> pair in server_UI.playerInfo)
-                {
-                    if(pair.Value.team != Team.SPECTATOR)
-                    {
-                        if (pair.Value.clientstate == ClientState.SPECTATING)
-                        {
-                            allReady = true;
-                            continue;
-                        }
-                        else
-                        {
-                            allReady = false;
-                            return;
-                        }
-                    }
-                }
-
-                if(allReady == true)
-                {
-                    StartRound();
-                }
-            }
+           
 
             //Ping Pong
             // Ping Pong stuff for timeout disconnects
@@ -219,16 +209,27 @@ namespace ChatClientExample
                         pongDict[m_Connections[i]].lastSendTime = Time.time;
                         if (pongDict[m_Connections[i]].status == 0)
                         {
-                            pongDict.Remove(m_Connections[i]);
-                            Debug.Log($"Remove{m_Connections[i]}");
-
                             //Cleanup Player
+                            Debug.Log($"Disconnecting: Client {pongDict[m_Connections[i]].clientID}");
+
+                            //Destroy PlayerObject
+                            foreach(NetworkObject netObject in playerInfo[pongDict[m_Connections[i]].clientID].objectList)
+                            {
+                                networkManager.DestroyWithID(netObject.networkID);
+                            }
+                            
+                            //Remove PlayerCard
+                            server_UI.DisconnectPlayer(this, pongDict[m_Connections[i]].clientID);
+
+                            //Remove from nameList
                             if (nameList.ContainsKey(m_Connections[i]))
                             {
                                 nameList.Remove(m_Connections[i]);
                             }
-                            server_UI.DisconnectPlayer((uint)i);
-                            //Disconnect
+
+                            //Remove form PingList
+                            pongDict.Remove(m_Connections[i]);
+                            //Disconnect connection
                             m_Connections[i].Disconnect(m_Driver);
                             m_Connections[i] = default;
                         }
@@ -246,6 +247,7 @@ namespace ChatClientExample
                     Debug.Log($"Added {m_Connections[i]} to Ping List.");
 
                     PingPong ping = new PingPong();
+                    ping.clientID = 0;//temp
                     ping.lastSendTime = Time.time;
                     ping.status = 3;    // 3 retries
                     ping.name = nameList[m_Connections[i]];
@@ -256,16 +258,179 @@ namespace ChatClientExample
                 }
             }
 
+            //TEST START GAME
+
+            if(gameState == GameState.LOBBY)
+            {
+                //Check Teams
+                CheckTeamStatus();
+            }
+            
         }
+        public void CheckTeamStatus()
+        {
+            //Check if teams are full
+            if (ServerSettings.redTeamPlayerCount >= ServerSettings.maxTeamPlayerCount && ServerSettings.blueTeamPlayerCount >= ServerSettings.maxTeamPlayerCount)
+            {
+                if(gameState == GameState.LOBBY)
+                {
+                    //Spawn Players
+                    SpawnPlayers();
+                    gameState = GameState.IN_GAME;
+                }
+
+                //ReadyCheck();
+            }
+            //Initiate Game
+
+            //Check if teams are Ready
+
+            //Start Round
+        }
+        public void SpawnPlayers()
+        {
+            //Spawn Players on SERVER
+            foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
+            {
+                uint networkID = NetworkManager.NextNetworkID;
+                GameObject newPlayer;
+                if (networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkID, networkID, new Vector3(0, 0, 0), out newPlayer))
+                {
+                    NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
+                    playerInstance.isServer = true;
+                    playerInstance.isLocal = false;
+
+                    playerInstance.teamID = playerInstance.networkID;//Temp TeamID
+                    networkID = playerInstance.networkID;
+
+                    playerInstances.Add(player.Value.connection, playerInstance);
+
+                    player.Value.objectList.Add(playerInstance);
+                }
+                else
+                {
+                    Debug.LogError("Could not spawn player instance");
+                }
+                //Spawn player on Client
+                NetworkPlayerSpawnMessage spawnMsg = new NetworkPlayerSpawnMessage
+                {
+                    networkID = networkID,
+                    objectType = (uint)NetworkSpawnObject.PLAYER,
+                    pos = new Vector3(0,0,0)
+                };
+
+                SendReply(player.Value.connection, spawnMsg);
+               
+            }
+            //Spawn Other players on Client
+            foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
+            {
+                foreach (KeyValuePair<NetworkConnection, NetworkPlayer> networkPlayer in playerInstances)
+                {
+                    if (networkPlayer.Key == player.Value.connection)
+                    {
+                        Debug.Log($"Same Key: {networkPlayer.Key} {player.Key}");
+                        continue;
+                    }
+
+                    NetworkSpawnMessage clientMsg = new NetworkSpawnMessage
+                    {
+                        networkID = networkPlayer.Value.networkID,
+                        objectType = (uint)NetworkSpawnObject.PLAYER,
+                        pos = new Vector3(0, 0, 0)
+                    };
+
+                    SendReply(player.Value.connection, clientMsg);
+                }
+            }
+
+            //// Send all existing players to this player
+
+            //Spawn other players
+
+
+        }
+        public void ReadyCheck()
+        {
+
+            //bool clientsReady()
+            //{
+            //    if (server_UI.teamRed.Count == ServerSettings.maxTeamPlayerCount && server_UI.teamBlue.Count == ServerSettings.maxTeamPlayerCount)
+            //    {
+            //        foreach (PlayerInfo player in server_UI.teamRed)
+            //        {
+            //            if (player.playerState != PlayerState.READY)
+            //            {
+            //                Debug.Log($"Player from team Red: {player.clientID} is not Ready");
+            //                return false;
+            //            }
+            //        }
+            //        foreach (PlayerInfo player in server_UI.teamBlue)
+            //        {
+            //            if (player.playerState != PlayerState.READY)
+            //            {
+            //                Debug.Log($"Player from team Blue: {player.clientID} is not Ready");
+            //                return false;
+            //            }
+            //        }
+
+            //        return true;
+            //    }
+            //    return false;
+            //}
+
+
+
+            //if (clientsReady() == true)
+            //{
+            //    StartRound();
+            //}
+        }
+       
+        public void StartRound()
+        {
+            //Spawn player on SERVER
+            foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
+            {
+
+                if (player.Value.team != Team.SPECTATOR)
+                {
+                    player.Value.clientstate = ClientState.IN_GAME;
+                    player.Value.playerState = PlayerState.NOT_READY;
+                }
+
+                
+
+            }
+
+            //Spawn all players to clients
+
+            ////SetClientState to IN_GAME
+            //foreach (KeyValuePair<uint,PlayerInfo> pair in server_UI.playerInfo)
+            //{
+            //    if(pair.Value.team != Team.SPECTATOR)
+            //    {
+            //        pair.Value.clientstate = ClientState.IN_GAME;
+            //        pair.Value.playerState = PlayerState.NOT_READY;
+            //    }
+            //}
+
+            server_UI.UpdatePlayerCards(this);
+            Debug.Log("StartRound");
+
+        }
+
         static void HandleClientHandshake(Server serv, NetworkConnection connection, MessageHeader header)
         {
             HandshakeMessage message = header as HandshakeMessage;
 
             // Add to list
             serv.nameList.Add(connection, message.name);
+
             string msg = $"{message.name.ToString()} has joined the Game.";
             Debug.Log($"{msg.ToString()} has joined the chat.");
             
+            //uint clientID = NetworkManager.NextNetworkID;
             uint clientID = NetworkManager.NextNetworkID;
 
             //Add client to LobbyManager
@@ -275,11 +440,12 @@ namespace ChatClientExample
                 playerID = 0,
                 playerName = message.name,
                 clientstate = ClientState.IN_LOBBY,
-                team = 0
+                team = 0,
+                connection = connection
             };
 
             //Add Client to Server_UI
-            serv.server_UI.ShowPlayerCard(info);
+            serv.server_UI.AddPlayerCard(serv, info);
 
             HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
             {
@@ -368,7 +534,7 @@ namespace ChatClientExample
             ClientInfoMessage msg = header as ClientInfoMessage;
 
             //Join Team and Set Ready
-            serv.server_UI.JoinTeam(msg.clientID, msg.teamNum);
+            serv.server_UI.JoinTeam(serv, msg.clientID, msg.teamNum);
             //serv.server_UI.playerInfo[msg.clientID].state = ClientState.READY;
 
             //Update Clients
@@ -494,7 +660,13 @@ namespace ChatClientExample
         }
         static void HandlePongMessage(Server serv, NetworkConnection connection, MessageHeader header)
         {
+            PongMessage msg = header as PongMessage;
             // Debug.Log("PONG");
+            //Set ID if needed
+            if (serv.pongDict[connection].clientID == 0)
+            {
+                serv.pongDict[connection].clientID = msg.clientID;
+            }
             serv.pongDict[connection].status = 3;   //reset retry count
         }
         static void HandleServerInfoMessage(Server serv, NetworkConnection connection, MessageHeader header)
@@ -508,24 +680,7 @@ namespace ChatClientExample
 
 
         //Server functions
-
-        public void StartRound()
-        {
-            //Spawn player from team Red and Blue
-
-            //SetClientState to IN_GAME
-            foreach (KeyValuePair<uint,PlayerInfo> pair in server_UI.playerInfo)
-            {
-                if(pair.Value.team != Team.SPECTATOR)
-                {
-                    pair.Value.clientstate = ClientState.IN_GAME;
-                }
-            }
-
-            server_UI.UpdatePlayerCards();
-            Debug.Log("StartRound");
-
-        }
+        
         public void SendBroadcast(MessageHeader header)
         {
             Debug.Log($"Msg Send {header.Type} to {m_Connections.Length} Clients");

@@ -46,7 +46,7 @@ public class NetworkManager : MonoBehaviour
             obj.transform.position = pos;
 
             networkedReferences.Add(id, obj);
-            Debug.Log($"SpawnWithID: {id} TeamID: {teamID}");
+            //Debug.Log($"SpawnWithID: {id} TeamID: {teamID}");
             return true;
         }
     }

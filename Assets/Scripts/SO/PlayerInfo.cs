@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Networking.Transport;
 
 namespace ChatClientExample
 {
@@ -30,9 +31,10 @@ namespace ChatClientExample
         public ClientState clientstate;
         public PlayerState playerState;
         public Team team;
-
-        //public uint teamNum;
         public uint cardNum;
+
+        public NetworkConnection connection;
+        public List<NetworkObject> objectList = new List<NetworkObject>();
 
     }
 }

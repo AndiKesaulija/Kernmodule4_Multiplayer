@@ -9,11 +9,12 @@ namespace ChatClientExample
     {
 
         public List<Player_Card> playerCards;
-        public Dictionary<uint, PlayerInfo> playerInfo = new Dictionary<uint, PlayerInfo>();
+
+        public List<PlayerInfo> teamRed = new List<PlayerInfo>(3);
+        public List<PlayerInfo> teamBlue = new List<PlayerInfo>(3);
 
         public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
         public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
-
         // Start is called before the first frame update
         void Start()
         {
@@ -27,7 +28,7 @@ namespace ChatClientExample
 
         }
 
-        public void ShowPlayerCard(PlayerInfo info)
+        public void AddPlayerCard(Server serv, PlayerInfo info)
         {
             //Bind playercard with playerInfo
             for (int i = 0; i < playerCards.Count; i++)
@@ -35,7 +36,7 @@ namespace ChatClientExample
                 if (!playerCards[i].isActiveAndEnabled)
                 {
                     info.cardNum = playerCards[i].playerCardNumber;
-                    playerInfo.Add(info.clientID, info);
+                    serv.playerInfo.Add(info.clientID, info);
 
                     playerCards[i].gameObject.SetActive(true);
                     playerCards[i].player = info;
@@ -46,58 +47,61 @@ namespace ChatClientExample
                 }
             }
         }
-        public void DisconnectPlayer(uint networkID)
+        public void DisconnectPlayer(Server serv,uint networkID)
         {
-            playerCards[(int)playerInfo[networkID].cardNum].gameObject.SetActive(false);
+            playerCards[(int)serv.playerInfo[networkID].cardNum].gameObject.SetActive(false);
 
-            playerInfo.Remove(networkID);
+            serv.playerInfo.Remove(networkID);
 
         }
 
-        public void UpdatePlayerCard(uint networkID)
+        public void UpdatePlayerCard(Server serv,uint networkID)
         {
-            playerCards[(int)playerInfo[networkID].cardNum].UpdateInfo(playerInfo[networkID]);
+            playerCards[(int)serv.playerInfo[networkID].cardNum].UpdateInfo(serv.playerInfo[networkID]);
         }
         public void UpdateServerSettings()
         {
             redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
             blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
         }
-        public void UpdatePlayerCards()
+        public void UpdatePlayerCards(Server serv)
         {
             for (int i = 0; i < playerCards.Count; i++)
             {
                 if (playerCards[i].isActiveAndEnabled)
                 {
-                    playerCards[i].UpdateInfo(playerInfo[playerCards[i].player.clientID]);
+                    playerCards[i].UpdateInfo(serv.playerInfo[playerCards[i].player.clientID]);
                 }
             }
         }
 
-        public void JoinTeam(uint clientID, uint teamNum)
+        public void JoinTeam(Server serv,uint clientID, uint teamNum)
         {
-            playerInfo[clientID].team = (Team)teamNum;
+            serv.playerInfo[clientID].team = (Team)teamNum;
 
             if(teamNum == 1)
             {
                 ServerSettings.redTeamPlayerCount++;
+                teamRed.Add(serv.playerInfo[clientID]);
             }
             if (teamNum == 2)
             {
                 ServerSettings.blueTeamPlayerCount++;
+                teamBlue.Add(serv.playerInfo[clientID]);
+
             }
 
-            playerInfo[clientID].clientstate = ClientState.SPECTATING;
+            serv.playerInfo[clientID].clientstate = ClientState.SPECTATING;
 
-            playerCards[(int)playerInfo[clientID].cardNum].UpdateInfo(playerInfo[clientID]);
+            playerCards[(int)serv.playerInfo[clientID].cardNum].UpdateInfo(serv.playerInfo[clientID]);
             UpdateServerSettings();
 
         }
-        public void SetReady(uint networkID, int state)
+        public void SetReady(Server serv,uint networkID, int state)
         {
-            playerInfo[networkID].playerState = (PlayerState)state;
+            serv.playerInfo[networkID].playerState = (PlayerState)state;
 
-            UpdatePlayerCard(networkID);
+            UpdatePlayerCard(serv, networkID);
 
         }
 
