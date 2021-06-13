@@ -11,7 +11,9 @@ namespace ChatClientExample
 
         public Text nameText;
         public Text clientStatusText;
+        public Text playerStatusText;
         public Text teamText;
+        public Text currentZoneText;
 
         public uint num;
         public uint playerCardNumber { get{ return num; }}
@@ -22,6 +24,8 @@ namespace ChatClientExample
             nameText.text = player.playerName;
             clientStatusText.text = player.clientstate.ToString();
             teamText.text = player.team.ToString();
+            playerStatusText.text = player.playerState.ToString();
+            currentZoneText.text = player.currentZone.ToString();
         }
 
         public void UpdateInfo(PlayerInfo info)
@@ -29,6 +33,10 @@ namespace ChatClientExample
             nameText.text = info.playerName;
             clientStatusText.text = info.clientstate.ToString();
             teamText.text = info.team.ToString();
+            playerStatusText.text = info.playerState.ToString();
+            currentZoneText.text = info.currentZone.ToString();
+
+
         }
     }
 }

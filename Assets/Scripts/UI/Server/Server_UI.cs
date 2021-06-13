@@ -36,7 +36,7 @@ namespace ChatClientExample
                 if (!playerCards[i].isActiveAndEnabled)
                 {
                     info.cardNum = playerCards[i].playerCardNumber;
-                    serv.playerInfo.Add(info.clientID, info);
+                    serv.playerInfo.Add(info.networkID, info);
 
                     playerCards[i].gameObject.SetActive(true);
                     playerCards[i].player = info;
@@ -70,7 +70,7 @@ namespace ChatClientExample
             {
                 if (playerCards[i].isActiveAndEnabled)
                 {
-                    playerCards[i].UpdateInfo(serv.playerInfo[playerCards[i].player.clientID]);
+                    playerCards[i].UpdateInfo(serv.playerInfo[playerCards[i].player.networkID]);
                 }
             }
         }
@@ -81,23 +81,28 @@ namespace ChatClientExample
 
             if(teamNum == 1)
             {
+                serv.playerInfo[clientID].teamPos = ServerSettings.redTeamPlayerCount;
+
                 ServerSettings.redTeamPlayerCount++;
                 teamRed.Add(serv.playerInfo[clientID]);
             }
             if (teamNum == 2)
             {
+                serv.playerInfo[clientID].teamPos = ServerSettings.blueTeamPlayerCount;
+
                 ServerSettings.blueTeamPlayerCount++;
                 teamBlue.Add(serv.playerInfo[clientID]);
 
             }
 
-            serv.playerInfo[clientID].clientstate = ClientState.SPECTATING;
+            serv.playerInfo[clientID].clientstate = ClientState.IN_GAME;
 
             playerCards[(int)serv.playerInfo[clientID].cardNum].UpdateInfo(serv.playerInfo[clientID]);
+
             UpdateServerSettings();
 
         }
-        public void SetReady(Server serv,uint networkID, int state)
+        public void SetPlayerState(Server serv,uint networkID, int state)
         {
             serv.playerInfo[networkID].playerState = (PlayerState)state;
 

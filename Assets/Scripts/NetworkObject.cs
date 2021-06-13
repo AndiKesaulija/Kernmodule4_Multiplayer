@@ -5,6 +5,7 @@ using UnityEngine;
 public class NetworkObject : MonoBehaviour
 {
     public uint networkID = 0;
+    public uint clientID = 0;
     public uint teamID = 0;
     public NetworkSpawnObject type;
 

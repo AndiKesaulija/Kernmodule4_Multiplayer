@@ -14,6 +14,7 @@ namespace ChatClientExample
     public enum GameState
     {
         LOBBY,
+        INTERMISSION,
         IN_GAME
     }
     public enum NetworkMessageType
@@ -27,6 +28,9 @@ namespace ChatClientExample
         PLAYER_SPAWN,
         NETWORK_DESTROY,
         INPUT_UPDATE,
+        UPDATE_NETWORK_OBJECT,
+        PLAYER_INFO,
+        PLAYER_OUTOFBOUNDS,
         GAME_QUIT,
         RPC,
         CLIENT_STATE,
@@ -34,7 +38,7 @@ namespace ChatClientExample
         SERVER_INFO,
         PING,
         PONG,
-        REQUEST
+        
     }
     public class PingPong
     {
@@ -53,8 +57,11 @@ namespace ChatClientExample
             { NetworkMessageType.NETWORK_SPAWN,             typeof(NetworkSpawnMessage) },
             { NetworkMessageType.PLAYER_SPAWN,              typeof(NetworkPlayerSpawnMessage) },
             { NetworkMessageType.NETWORK_DESTROY,           typeof(NetworkDestroyMessage) },
+            { NetworkMessageType.PLAYER_INFO,               typeof(PlayerInfoMessage) },
+            { NetworkMessageType.PLAYER_OUTOFBOUNDS,        typeof(OutOfBoundsMessage) },
             //{ NetworkMessageType.NETWORK_UPDATE_POSITION,   typeof(UpdatePositionMessage) },
             { NetworkMessageType.INPUT_UPDATE,              typeof(InputUpdateMessage) },
+            { NetworkMessageType.UPDATE_NETWORK_OBJECT,     typeof(UpdateNetworkObjectMessage) },
             { NetworkMessageType.PING,                      typeof(PingMessage) },
             { NetworkMessageType.PONG,                      typeof(PongMessage) },
             { NetworkMessageType.GAME_QUIT,                 typeof(QuitMessage) },
@@ -77,6 +84,7 @@ namespace ChatClientExample
             { NetworkMessageType.CHAT_MESSAGE,              HandleClientMessage },
             { NetworkMessageType.GAME_QUIT,                 HandleClientExit },
             { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
+            { NetworkMessageType.PLAYER_INFO,               HandlePlayerInfoMessage },
             { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
             { NetworkMessageType.NETWORK_DESTROY,           HandleDestroyMessage },
             { NetworkMessageType.RPC,                       HandleRPCMessage },
@@ -102,6 +110,7 @@ namespace ChatClientExample
         //public Server_LobbyManager lobbyManager;
         public Server_UI server_UI;
         public GameState gameState;
+        public SpawnPoint spawnPoints = new SpawnPoint();
 
         void Start()
         {
@@ -153,7 +162,7 @@ namespace ChatClientExample
             while ((c = m_Driver.Accept()) != default(NetworkConnection))
             {
                 m_Connections.Add(c);
-                
+
                 Debug.Log("Accepted a connection");
             }
 
@@ -174,7 +183,7 @@ namespace ChatClientExample
                         NetworkMessageType msgType = (NetworkMessageType)stream.ReadUInt();
                         // Create instance and deserialize
                         MessageHeader header = (MessageHeader)System.Activator.CreateInstance(NetworkMessageInfo.TypeMap[msgType]);
-                        
+
                         header.DeserializeObject(ref stream);
 
                         if (networkMessageHandlers.ContainsKey(msgType))
@@ -190,7 +199,23 @@ namespace ChatClientExample
             }
 
 
-           
+            //Update PLayer Position Zoals ping?
+            foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
+            {
+                foreach (KeyValuePair<uint, GameObject> networkObject in networkManager.networkedReferences)
+                {
+                    UpdateNetworkObjectMessage msg = new UpdateNetworkObjectMessage();
+
+                    msg.networkID = networkObject.Key;
+                    msg.position = networkObject.Value.transform.position;
+
+                    SendReply(player.Value.connection, msg);
+                }
+
+                server_UI.UpdatePlayerCard(this, player.Value.clientID);
+
+            }
+
 
             //Ping Pong
             // Ping Pong stuff for timeout disconnects
@@ -265,7 +290,52 @@ namespace ChatClientExample
                 //Check Teams
                 CheckTeamStatus();
             }
-            
+            if (gameState == GameState.INTERMISSION)
+            {
+                //Check if all players Ready
+                ReadyCheck();
+            }
+            if (gameState == GameState.IN_GAME)
+            {
+                //Check if round is over
+                if(CheckOutOfBounds(server_UI.teamRed) == true)
+                {
+                    if(ServerSettings.activeZone > 1)
+                    {
+                        ServerSettings.activeZone = ServerSettings.activeZone - 1;
+                        gameState = GameState.INTERMISSION;
+
+                        SpawnPlayers();
+                    }
+                    else
+                    {
+                        //EndGame
+                        gameState = GameState.LOBBY;
+                        EndRound();
+                    }
+                    
+                }
+                if (CheckOutOfBounds(server_UI.teamBlue) == true)
+                {
+                    if (ServerSettings.activeZone < 5)
+                    {
+                        ServerSettings.activeZone = ServerSettings.activeZone + 1;
+
+                        gameState = GameState.INTERMISSION;
+
+                        SpawnPlayers();
+                    }
+                    else
+                    {
+                        //EndGame
+                        gameState = GameState.LOBBY;
+                        EndRound();
+                    }
+
+                }
+
+            }
+
         }
         public void CheckTeamStatus()
         {
@@ -274,62 +344,137 @@ namespace ChatClientExample
             {
                 if(gameState == GameState.LOBBY)
                 {
-                    //Spawn Players
-                    SpawnPlayers();
-                    gameState = GameState.IN_GAME;
+                    //Spawn Players 
+                    SpawnPlayers();//start in zone 3 and 4
+                    gameState = GameState.INTERMISSION;
                 }
 
-                //ReadyCheck();
             }
-            //Initiate Game
-
-            //Check if teams are Ready
-
-            //Start Round
         }
+        public void ReadyCheck()
+        {
+
+            bool clientsReady()
+            {
+                if (server_UI.teamRed.Count == ServerSettings.maxTeamPlayerCount && server_UI.teamBlue.Count == ServerSettings.maxTeamPlayerCount)
+                {
+                    foreach (PlayerInfo player in server_UI.teamRed)
+                    {
+                        if (player.playerState != PlayerState.READY)
+                        {
+                            Debug.Log($"Player from team Red: {player.clientID} is not Ready");
+                            return false;
+                        }
+                    }
+                    foreach (PlayerInfo player in server_UI.teamBlue)
+                    {
+                        if (player.playerState != PlayerState.READY)
+                        {
+                            Debug.Log($"Player from team Blue: {player.clientID} is not Ready");
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                return false;
+            }
+
+
+
+            if (clientsReady() == true)
+            {
+                gameState = GameState.IN_GAME;
+            }
+        }
+        public bool CheckOutOfBounds(List<PlayerInfo> team)
+        {
+            bool outofbounds = true;
+
+            for (int i = 0; i < team.Count; i++)
+            {
+                if(team[i].playerState != PlayerState.OUT_OF_BOUNDS)
+                {
+                    outofbounds = false;
+                }
+            }
+
+            return outofbounds;
+
+        }
+
         public void SpawnPlayers()
         {
+            //CleanUp
+            EndRound();
+
             //Spawn Players on SERVER
             foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
             {
                 uint networkID = NetworkManager.NextNetworkID;
+
+                
+                Vector3 rot= new Vector3();
+
+                if(player.Value.team == Team.RED)
+                {
+                    rot = new Vector3(0, 180, 0);
+                }
+                if (player.Value.team == Team.BLUE)
+                {
+                    rot = new Vector3(0, 0, 0);
+                }
                 GameObject newPlayer;
-                if (networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkID, networkID, new Vector3(0, 0, 0), out newPlayer))
+                if (networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkID, player.Value.clientID, 0, spawnPos(player.Value),rot , out newPlayer))
                 {
                     NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
                     playerInstance.isServer = true;
                     playerInstance.isLocal = false;
 
-                    playerInstance.teamID = playerInstance.networkID;//Temp TeamID
-                    networkID = playerInstance.networkID;
+                    playerInstance.teamID = (uint)player.Value.team;//Temp TeamID
+                    playerInstance.clientID = player.Value.clientID;
 
                     playerInstances.Add(player.Value.connection, playerInstance);
 
+                    player.Value.networkID = playerInstance.networkID;
+                    player.Value.spawnPos = spawnPos(player.Value);
+                    player.Value.spawnRot = rot;
                     player.Value.objectList.Add(playerInstance);
+
+                    if(player.Value.team == Team.RED)
+                    {
+                        player.Value.activeZone = ServerSettings.activeZone;
+                    }
+                    if (player.Value.team == Team.BLUE)
+                    {
+                        player.Value.activeZone = ServerSettings.activeZone + 1;
+                    }
+
+                    //Spawn player on Client
+                    NetworkPlayerSpawnMessage spawnMsg = new NetworkPlayerSpawnMessage
+                    {
+                        networkID = networkID,
+                        objectType = (uint)NetworkSpawnObject.PLAYER,
+                        pos = player.Value.spawnPos,
+                        rot = player.Value.spawnRot
+                    };
+
+                    SendReply(player.Value.connection, spawnMsg);
                 }
                 else
                 {
                     Debug.LogError("Could not spawn player instance");
                 }
-                //Spawn player on Client
-                NetworkPlayerSpawnMessage spawnMsg = new NetworkPlayerSpawnMessage
-                {
-                    networkID = networkID,
-                    objectType = (uint)NetworkSpawnObject.PLAYER,
-                    pos = new Vector3(0,0,0)
-                };
-
-                SendReply(player.Value.connection, spawnMsg);
                
             }
             //Spawn Other players on Client
             foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
             {
-                foreach (KeyValuePair<NetworkConnection, NetworkPlayer> networkPlayer in playerInstances)
+                foreach (KeyValuePair<uint, PlayerInfo> networkPlayer in playerInfo)
                 {
-                    if (networkPlayer.Key == player.Value.connection)
+                    if (player.Value.networkID == networkPlayer.Value.networkID)
                     {
-                        Debug.Log($"Same Key: {networkPlayer.Key} {player.Key}");
+                        //Debug.Log($"Same Key: {networkPlayer.Value.networkID} {player.Value.networkID}");
                         continue;
                     }
 
@@ -337,89 +482,73 @@ namespace ChatClientExample
                     {
                         networkID = networkPlayer.Value.networkID,
                         objectType = (uint)NetworkSpawnObject.PLAYER,
-                        pos = new Vector3(0, 0, 0)
+                        pos = networkPlayer.Value.spawnPos,
+                        rot = networkPlayer.Value.spawnRot
+
                     };
 
+                    
                     SendReply(player.Value.connection, clientMsg);
                 }
+               
             }
 
-            //// Send all existing players to this player
-
-            //Spawn other players
-
-
         }
-        public void ReadyCheck()
+        public Vector3 spawnPos(PlayerInfo info)
         {
+            if(info.team == Team.RED)
+            {
+                Vector3 spawnPos = spawnPoints.zones[ServerSettings.activeZone].spot[info.teamPos];
+                return spawnPos;
 
-            //bool clientsReady()
-            //{
-            //    if (server_UI.teamRed.Count == ServerSettings.maxTeamPlayerCount && server_UI.teamBlue.Count == ServerSettings.maxTeamPlayerCount)
-            //    {
-            //        foreach (PlayerInfo player in server_UI.teamRed)
-            //        {
-            //            if (player.playerState != PlayerState.READY)
-            //            {
-            //                Debug.Log($"Player from team Red: {player.clientID} is not Ready");
-            //                return false;
-            //            }
-            //        }
-            //        foreach (PlayerInfo player in server_UI.teamBlue)
-            //        {
-            //            if (player.playerState != PlayerState.READY)
-            //            {
-            //                Debug.Log($"Player from team Blue: {player.clientID} is not Ready");
-            //                return false;
-            //            }
-            //        }
+            }
+            if (info.team == Team.BLUE)
+            {
+                Vector3 spawnPos = spawnPoints.zones[ServerSettings.activeZone + 1].spot[info.teamPos];
+                return spawnPos;
 
-            //        return true;
-            //    }
-            //    return false;
-            //}
+            }
 
-
-
-            //if (clientsReady() == true)
-            //{
-            //    StartRound();
-            //}
+            Debug.Log("Invalid Spawn Position");
+            return Vector3.zero;
         }
-       
-        public void StartRound()
+
+        public void HandleOutOfBounds(uint clientID, uint networkID)
         {
-            //Spawn player on SERVER
+            //Destroy Object and set playerinfo.PlayerState.OUT_OF_BOUNDS
+
+            Debug.Log($"Destroy Player: {networkManager.networkedReferences[networkID].name}");
+
+            networkManager.DestroyWithID(networkID);
+            server_UI.SetPlayerState(this, clientID, (int)PlayerState.OUT_OF_BOUNDS);
+
+
+            OutOfBoundsMessage msg = new OutOfBoundsMessage
+            {
+                clientID = clientID,
+                networkID = networkID
+            };
+
+            SendBroadcast(msg);
+        }
+        public void EndRound()
+        {
             foreach (KeyValuePair<uint, PlayerInfo> player in playerInfo)
             {
-
-                if (player.Value.team != Team.SPECTATOR)
+                foreach (NetworkObject netObject in player.Value.objectList)
                 {
-                    player.Value.clientstate = ClientState.IN_GAME;
-                    player.Value.playerState = PlayerState.NOT_READY;
+                    networkManager.DestroyWithID(netObject.networkID);
+
+                    NetworkDestroyMessage msg = new NetworkDestroyMessage
+                    {
+                        networkID = netObject.networkID
+                    };
+                    SendBroadcast(msg);
                 }
 
-                
-
+                playerInstances.Remove(player.Value.connection);
             }
-
-            //Spawn all players to clients
-
-            ////SetClientState to IN_GAME
-            //foreach (KeyValuePair<uint,PlayerInfo> pair in server_UI.playerInfo)
-            //{
-            //    if(pair.Value.team != Team.SPECTATOR)
-            //    {
-            //        pair.Value.clientstate = ClientState.IN_GAME;
-            //        pair.Value.playerState = PlayerState.NOT_READY;
-            //    }
-            //}
-
-            server_UI.UpdatePlayerCards(this);
-            Debug.Log("StartRound");
-
         }
-
         static void HandleClientHandshake(Server serv, NetworkConnection connection, MessageHeader header)
         {
             HandshakeMessage message = header as HandshakeMessage;
@@ -430,14 +559,15 @@ namespace ChatClientExample
             string msg = $"{message.name.ToString()} has joined the Game.";
             Debug.Log($"{msg.ToString()} has joined the chat.");
             
-            //uint clientID = NetworkManager.NextNetworkID;
-            uint clientID = NetworkManager.NextNetworkID;
+            uint networkID = NetworkManager.NextNetworkID;
+            uint clientID = NetworkManager.NextClientID;
+
 
             //Add client to LobbyManager
             PlayerInfo info = new PlayerInfo
             {
+                networkID = networkID,
                 clientID = clientID,
-                playerID = 0,
                 playerName = message.name,
                 clientstate = ClientState.IN_LOBBY,
                 team = 0,
@@ -457,77 +587,6 @@ namespace ChatClientExample
             ServerInfoMessage serverInfo = new ServerInfoMessage();
             serv.SendReply(connection, serverInfo);
 
-
-            ////Spawn LOCAL Player Object
-            //GameObject newPlayer;
-            //if (serv.networkManager.SpawnWithID(NetworkSpawnObject.PLAYER, networkId, networkId, new Vector3(0, 0, 0), out newPlayer))
-            //{
-            //    NetworkPlayer playerInstance = newPlayer.GetComponent<NetworkPlayer>();
-            //    playerInstance.isServer = true;
-            //    playerInstance.isLocal = false;
-
-            //    playerInstance.teamID = playerInstance.networkID;//Temp TeamID
-            //    networkId = playerInstance.networkID;
-
-            //    serv.playerInstances.Add(connection, playerInstance);
-
-            //    // Send spawn local player back to sender
-            //    HandshakeResponseMessage responseMsg = new HandshakeResponseMessage
-            //    {
-            //        //clientID = NetworkManager.NextNetworkID,
-            //        message = $"Welcome {message.name.ToString()}!",
-            //        networkID = playerInstance.networkID,
-
-            //    };
-
-            //    serv.SendReply(connection, responseMsg);
-
-            //}
-            //else
-            //{
-            //    Debug.LogError("Could not spawn player instance");
-            //}
-
-            //// Send all existing players to this player
-            //foreach (KeyValuePair<NetworkConnection, NetworkPlayer> pair in serv.playerInstances)
-            //{
-            //    if (pair.Key == connection)
-            //    {
-            //        Debug.Log($"Same Key: {pair.Key} {connection}");
-            //        continue;
-            //    }
-
-            //    NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
-            //    {
-            //        networkID = pair.Value.networkID,
-            //        objectType = (uint)NetworkSpawnObject.PLAYER,
-            //        pos = pair.Value.transform.position
-            //    };
-
-            //    serv.SendReply(connection, spawnMsg);
-            //}
-
-            //// Send creation of this player to all existing players
-            //if (networkId != 0)
-            //{
-            //    for (int i = 0; i < serv.m_Connections.Length; i++)
-            //    {
-            //        NetworkSpawnMessage spawnMsg = new NetworkSpawnMessage
-            //        {
-            //            networkID = networkId,
-            //            objectType = (uint)NetworkSpawnObject.PLAYER
-            //        };
-            //        serv.SendReply(serv.m_Connections[i], spawnMsg);
-            //    }
-
-            //}
-            //else
-            //{
-            //    Debug.LogError("Invalid network id for broadcasting creation");
-            //}
-
-
-
         }
         static void HandleClientInfoMessage(Server serv, NetworkConnection connection, MessageHeader header)
         {
@@ -545,26 +604,30 @@ namespace ChatClientExample
         {
             InputUpdateMessage inputMsg = header as InputUpdateMessage;
 
-            if (serv.playerInstances.ContainsKey(connection))
+            if (serv.gameState == GameState.IN_GAME)
             {
-                if (serv.playerInstances[connection].networkID == inputMsg.networkID)
+                if (serv.playerInstances.ContainsKey(connection))
                 {
-                    serv.playerInstances[connection].UpdateInput(inputMsg.input);
+                    if (serv.playerInstances[connection].networkID == inputMsg.networkID)
+                    {
+                        serv.playerInstances[connection].UpdateInput(inputMsg.input);
+                    }
+                    else
+                    {
+                        Debug.LogError("NetworkID Mismatch for Player Input" +
+                                        "Connection ID: " + serv.playerInstances[connection].networkID +
+                                        "InputID: " + inputMsg.networkID);
+                    }
                 }
                 else
                 {
-                    Debug.LogError("NetworkID Mismatch for Player Input" + 
-                                    "Connection ID: " + serv.playerInstances[connection].networkID + 
-                                    "InputID: " + inputMsg.networkID);
+                    Debug.LogError("Received player input from unlisted connection");
                 }
-            }
-            else
-            {
-                Debug.LogError("Received player input from unlisted connection");
-            }
 
-            //BroadCast to Clients
-            serv.SendBroadcast(inputMsg);
+                //BroadCast to Clients
+                serv.SendBroadcast(inputMsg);
+            }
+            
 
         }
 
@@ -637,7 +700,7 @@ namespace ChatClientExample
             NetworkSpawnMessage msg = header as NetworkSpawnMessage;
 
             GameObject obj;
-            if(serv.networkManager.SpawnWithID((NetworkSpawnObject)msg.objectType, NetworkManager.NextNetworkID, msg.teamID, msg.pos, out obj)){
+            if(serv.networkManager.SpawnWithID((NetworkSpawnObject)msg.objectType, NetworkManager.NextNetworkID,msg.clientID, msg.teamID, msg.pos, msg.rot, out obj)){
 
                 msg.networkID = obj.GetComponent<NetworkObject>().networkID;
                 serv.SendBroadcast(msg);
@@ -675,15 +738,18 @@ namespace ChatClientExample
 
             serv.server_UI.UpdateServerSettings();
         }
+        static void HandlePlayerInfoMessage(Server serv, NetworkConnection connection, MessageHeader header)
+        {
+            PlayerInfoMessage msg = header as PlayerInfoMessage;
 
-
-
+            serv.playerInfo[msg.info.networkID].currentZone = msg.info.currentZone;
+        }
 
         //Server functions
-        
+
         public void SendBroadcast(MessageHeader header)
         {
-            Debug.Log($"Msg Send {header.Type} to {m_Connections.Length} Clients");
+            //Debug.Log($"Msg Send {header.Type} to {m_Connections.Length} Clients");
             for (int i = 0; i < m_Connections.Length; i++)
             {
                 DataStreamWriter writer;
@@ -707,6 +773,31 @@ namespace ChatClientExample
                 m_Driver.EndSend(writer);
 
             }
+        }
+
+        public void BundelInputUpdate(params InputUpdateMessage[] bundel)
+        {
+            for (int i = 0; i < bundel.Length; i++)
+            {
+                InputUpdateMessage msg = new InputUpdateMessage();
+
+                msg.networkID = bundel[i].networkID;
+
+                foreach (InputUpdateMessage input in bundel)
+                {
+                    if(msg.networkID == input.networkID)
+                    {
+                        msg.input.horizontal = msg.input.horizontal + input.input.horizontal;
+                        msg.input.vertical = msg.input.vertical + input.input.vertical;
+                    }
+                    
+                }
+
+                SendBroadcast(msg);
+
+            }
+
+            
         }
     }
 }

@@ -34,33 +34,43 @@ namespace ChatClientExample
             }
             if (isServer)
             {
-                
-                if(other.GetComponent<NetworkObject>().teamID != teamID)
+                if(serv.gameState == GameState.IN_GAME)
                 {
-                    if (serv.networkManager.DestroyWithID(networkID))
+                    if (other.GetComponent<NetworkObject>())
                     {
-                        NetworkDestroyMessage msg = new NetworkDestroyMessage()
+                        if (other.GetComponent<NetworkObject>().teamID != teamID)
                         {
-                            networkID = networkID
-                        };
-                        serv.SendBroadcast(msg);
-
-                        if(other.GetComponent<NetworkObject>().type == NetworkSpawnObject.PLAYER)
-                        {
-                            InputUpdate update = new InputUpdate(0, -5f);
-                            InputUpdateMessage push = new InputUpdateMessage
+                            if (other.GetComponent<NetworkObject>().type == NetworkSpawnObject.PLAYER)
                             {
-                                networkID = other.GetComponent<NetworkObject>().networkID,
-                                input = update
+                                ////Send to Clients
+                                //InputUpdate update = new InputUpdate(0, -5f, 0);
+                                //InputUpdateMessage push = new InputUpdateMessage
+                                //{
+                                //    networkID = other.GetComponent<NetworkObject>().networkID,
+                                //    input = update
+                                //};
+
+                                //serv.SendBroadcast(push);
+
+                                ////TODO: Move Local?
+                                //other.GetComponent<NetworkPlayer>().UpdateInput(update);
+
+                                other.GetComponent<NetworkPlayer>().PushPlayer(new Vector3(0, 0, -5f));
+
+                            }
+
+                            serv.networkManager.DestroyWithID(networkID);
+
+                            NetworkDestroyMessage msg = new NetworkDestroyMessage()
+                            {
+                                networkID = networkID
                             };
+                            serv.SendBroadcast(msg);
 
-                            serv.SendBroadcast(push);
-
-                            //TODO: Move Local?
                         }
-
                     }
                 }
+               
             }
         }
         private void FixedUpdate()
@@ -69,8 +79,10 @@ namespace ChatClientExample
         }
         void MoveProjectile(Vector3 direction)
         {
+            transform.Translate(direction * speed * Time.deltaTime);
+
             //rb.velocity = direction * speed;
-            rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
+            //rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
         }
     }
 

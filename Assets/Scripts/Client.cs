@@ -16,7 +16,9 @@ namespace ChatClientExample
             { NetworkMessageType.CHAT_MESSAGE,              HandleChatMessage },
             { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
             { NetworkMessageType.PLAYER_SPAWN,              HandlePlayerSpawnMessage },
+            { NetworkMessageType.PLAYER_OUTOFBOUNDS,        HandleOutOfBoundsMessage },
             { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
+            { NetworkMessageType.UPDATE_NETWORK_OBJECT,     HandleNetworkObjectUpdate },
             { NetworkMessageType.NETWORK_DESTROY,           HandleDestroyMessage },
             { NetworkMessageType.RPC,                       HandleRPCMessage },
             { NetworkMessageType.SERVER_INFO,               HandleServerInfoMessage },
@@ -43,6 +45,8 @@ namespace ChatClientExample
         private InputUpdate myInput;
         private uint teamID;
 
+        public Camera spectatorCam;
+
 
 
         void Start()
@@ -54,6 +58,7 @@ namespace ChatClientExample
             var endpoint = NetworkEndPoint.Parse("127.0.0.1", 1511);
             //endpoint.Port = 1511;
             m_Connection = m_Driver.Connect(endpoint);
+
 
         }
         public void OnDisable()
@@ -162,7 +167,9 @@ namespace ChatClientExample
                                                 (NetworkSpawnObject)msg.objectType,
                                                 msg.networkID,
                                                 msg.teamID,
+                                                msg.clientID,
                                                 msg.pos,
+                                                msg.rot,
                                                 out obj))
             {
                 Debug.Log("Spawn Failed");
@@ -178,6 +185,17 @@ namespace ChatClientExample
                 client.chat.InvokeMessage("Client ID: " + msg.networkID, client.chat.chatMessages);
             }
         }
+        static void HandleOutOfBoundsMessage(Client client, MessageHeader header)
+        {
+            OutOfBoundsMessage msg = header as OutOfBoundsMessage;
+
+            client.networkManager.DestroyWithID(msg.networkID);
+
+            if(msg.clientID == client.clientID)
+            {
+                client.spectatorCam.enabled = true;
+            }
+        }
         static void HandleSpawnMessage(Client client, MessageHeader header)
         {
             NetworkSpawnMessage msg = header as NetworkSpawnMessage;
@@ -186,8 +204,10 @@ namespace ChatClientExample
             if(!client.networkManager.SpawnWithID(
                                                 (NetworkSpawnObject)msg.objectType,
                                                 msg.networkID,
+                                                msg.clientID,
                                                 msg.teamID,
                                                 msg.pos,
+                                                msg.rot,
                                                 out obj))
             {
                 Debug.Log("Spawn Failed");
@@ -200,7 +220,11 @@ namespace ChatClientExample
         static void HandleInputMessage(Client client, MessageHeader header)
         {
             InputUpdateMessage msg = header as InputUpdateMessage;
-            client.networkManager.networkedReferences[msg.networkID].GetComponent<NetworkPlayer>().UpdateInput(msg.input);
+
+            if (client.networkManager.networkedReferences[msg.networkID])
+            {
+                client.networkManager.networkedReferences[msg.networkID].GetComponent<NetworkPlayer>().UpdateInput(msg.input);
+            }
         }
         static void HandleDestroyMessage(Client client, MessageHeader header)
         {
@@ -248,23 +272,20 @@ namespace ChatClientExample
             client.client_UI.UpdateServerSettings();
         }
 
+        static void HandleNetworkObjectUpdate(Client client, MessageHeader header)
+        {
+            UpdateNetworkObjectMessage msg = header as UpdateNetworkObjectMessage;
+
+            client.networkManager.networkedReferences[msg.networkID].transform.position = msg.position;
+        }
+
         //Client functions
-        public void SelectTeam(int teamNum)
-        {
-            ClientInfoMessage msg = new ClientInfoMessage
-            {
-                clientID = clientID,
-                teamNum = (uint)teamNum
-            };
-            SendPackedMessage(msg);
-            client_UI.CloseWindow(client_UI.window_TeamSelection);
+        
 
-        }
-
-        public void SetTeam(Server serv, int teamNum)
-        {
-            serv.playerInfo[clientID].team = (Team)teamNum;
-        }
+        //public void SetTeam(Server serv, int teamNum)
+        //{
+        //    serv.playerInfo[clientID].team = (Team)teamNum;
+        //}
 
         
         public void SendMyMessage()
@@ -285,11 +306,23 @@ namespace ChatClientExample
             SendPackedMessage(quitGame);
         }
 
+
+        //UIFunction
+        public void SelectTeam(int teamNum)
+        {
+            ClientInfoMessage msg = new ClientInfoMessage
+            {
+                clientID = clientID,
+                teamNum = (uint)teamNum
+            };
+            SendPackedMessage(msg);
+            client_UI.CloseWindow(client_UI.window_TeamSelection);
+
+        }
         public void ReadInputField(string input)
         {
             myMessage = input;
         }
-
 
         public void SendPackedMessage(MessageHeader header)
         {

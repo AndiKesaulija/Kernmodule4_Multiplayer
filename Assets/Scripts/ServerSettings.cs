@@ -10,6 +10,11 @@ namespace ChatClientExample
 
         public static uint redTeamPlayerCount;
         public static uint blueTeamPlayerCount;
+
+        //public static uint activeRedZone;
+        //public static uint activeBlueZone;
+
+        public static uint activeZone = 2;
     }
 }
 

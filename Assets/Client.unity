@@ -362,6 +362,7 @@ MonoBehaviour:
   client_UI: {fileID: 130859308}
   clientName: Player_Name
   clientID: 0
+  spectatorCam: {fileID: 1716402891}
 --- !u!4 &130859306
 Transform:
   m_ObjectHideFlags: 0
@@ -1801,7 +1802,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1716402889}
   m_LocalRotation: {x: 0.3536754, y: 0.0028051587, z: -0.0010618748, w: 0.9353635}
-  m_LocalPosition: {x: -0.63591003, y: 93.56952, z: -106.03935}
+  m_LocalPosition: {x: -0.63591003, y: 28.7, z: -43.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}

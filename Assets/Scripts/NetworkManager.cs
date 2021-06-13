@@ -7,6 +7,9 @@ public class NetworkManager : MonoBehaviour
     private static uint nextNetworkId = 0;
     public static uint NextNetworkID => ++nextNetworkId;
 
+    private static uint nextClientId = 0;
+    public static uint NextClientID => ++nextClientId;
+
     [SerializeField]
     private Spawninfo spawnInfo;
     
@@ -22,7 +25,7 @@ public class NetworkManager : MonoBehaviour
         }
         return false;
     }
-    public bool SpawnWithID(NetworkSpawnObject type, uint id,uint teamID,Vector3 pos, out GameObject obj)
+    public bool SpawnWithID(NetworkSpawnObject type, uint id,uint clientID,uint teamID,Vector3 pos, Vector3 rot, out GameObject obj)
     {
         obj = null;
         if (networkedReferences.ContainsKey(id))
@@ -40,10 +43,12 @@ public class NetworkManager : MonoBehaviour
                 netObj = obj.AddComponent<NetworkObject>();
             }
             netObj.networkID = id;
+            netObj.clientID = clientID;
             netObj.teamID = teamID;
             netObj.type = type;
 
             obj.transform.position = pos;
+            obj.transform.rotation = Quaternion.Euler(rot);
 
             networkedReferences.Add(id, obj);
             //Debug.Log($"SpawnWithID: {id} TeamID: {teamID}");

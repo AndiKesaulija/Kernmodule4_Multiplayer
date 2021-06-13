@@ -22,44 +22,58 @@ namespace ChatClientExample
         //public uint networkId;
 
         public Client client;
+        public Server serv;
         public Camera myCam;
 
         InputUpdate input;
 
         //movement
         public Rigidbody rb;
-        public Vector3 movement;
+        public Vector3 direction;
         public float speed = 10;
+
+        public uint currentZone;
+        private uint updateZone;
 
 
         void Start()
         {
             rb = this.GetComponent<Rigidbody>();
-            client = FindObjectOfType<Client>();
             //networkId = this.GetComponent<NetworkObject>().networkID;
             myCam = GetComponentInChildren<Camera>();
             if (isLocal)
             {
+                client = FindObjectOfType<Client>();
+
+                client.spectatorCam.enabled = false;
                 myCam.enabled = true;
-                if (Camera.main)
-                {
-                    Camera.main.enabled = false;
-                }
+                //if (Camera.main)
+                //{
+                //    Camera.main.enabled = false;
+                //}
             }
-            
+            if (isServer)
+            {
+                serv = FindObjectOfType<Server>();
+                currentZone = CheckPlayerPosition(transform.position.z);
+            }
+
         }
 
         void Update()
         {
-            InputUpdate update = new InputUpdate(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
 
             if (isLocal)
 			{
-                //movement = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+                InputUpdate update = new InputUpdate(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+
+                
+
                 InputUpdateMessage msg = new InputUpdateMessage
                 {
                     networkID = this.networkID,
-                    input = update
+                    input = update,
+
                 };
 
                 client.SendPackedMessage(msg);
@@ -68,88 +82,134 @@ namespace ChatClientExample
                 {
                     Debug.Log("MouseDown");
 
-                    RPCMessage RPCmsg = new RPCMessage
-                    {
-                        target = this,
-                        methodName = "Fire",
-                        data = new object[] { null, transform.position }
-                    };
+                    //RPCMessage RPCmsg = new RPCMessage
+                    //{
+                    //    target = this,
+                    //    methodName = "Fire",
+                    //    data = new object[] { null, transform.position }
+                    //};
 
-                    client.SendPackedMessage(RPCmsg);
+                    //client.SendPackedMessage(RPCmsg);
 
                     client.CallOnServerObject("Fire", this, null, transform.position);
                 }
                 if (Input.GetMouseButtonDown(1))
                 {
-                    //client.CallOnServerObject("SetPlayerState", this, null, ClientState.READY);
+                    client.CallOnServerObject("SetPlayerState", this, null, (int)PlayerState.READY);
                 }
 
+            }
+
+            if (isServer)
+            {
+                updateZone = CheckPlayerPosition(transform.position.z);
+                if(updateZone != currentZone)
+                {
+                    serv.playerInfo[clientID].currentZone = updateZone;
+
+                    serv.HandleOutOfBounds(clientID, networkID);
+                    //SetPlayerState(serv, (int)PlayerState.OUT_OF_BOUNDS);
+
+                }
+                currentZone = updateZone;
             }
 			
 		}
         void FixedUpdate()
         {
-            MovePLayer(movement);
+            MovePLayer(direction);
         }
 
         public void UpdateInput(InputUpdate received)
         {
-            //input.horizontal = received.horizontal;
-            //input.vertical = received.vertical;
+            direction = new Vector3(received.horizontal, 0, received.vertical).normalized;
+        }
+        public uint CheckPlayerPosition(float position)
+        {
+            uint currZone = 0;
+            //Define zones
+            if (position < 33 && position > 22)
+            {
+                currZone = 1;
+                return currZone;
+            }
+            else if (position < 22 && position > 11)
+            {
+                currZone = 2;
+                return currZone;
+            }
+            else if (position < 11 && position > 0)
+            {
+                currZone = 3;
+                return currZone;
+            }
+            else if (position < 0 && position > -11)
+            {
+                currZone = 4;
+                return currZone;
+            }
+            else if (position < -11 && position > -22)
+            {
+                currZone = 5;
+                return currZone;
+            }
+            else if (position < -22 && position > -33)
+            {
+                currZone = 6;
+                return currZone;
+            }
 
-            movement = new Vector3(received.horizontal, 0, received.vertical);
+            return currZone;
+
         }
         void MovePLayer(Vector3 direction)
         {
+            //Gebruik RB met axis?
+            transform.Translate(direction * speed * Time.deltaTime);
+
+
+            //rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
             //rb.velocity = direction * speed;
-            rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
         }
 
         public void Fire(Server serv,Vector3 position)
         {
-            uint id = serv.networkManager.GetNextID();
-
-            GameObject obj;
-            if (serv.networkManager.SpawnWithID(NetworkSpawnObject.BULLET, id, teamID, position, out obj))
+            if(serv.gameState == GameState.IN_GAME)
             {
-                obj.GetComponent<NetworkObject>().isServer = true;
+                uint id = serv.networkManager.GetNextID();
 
-                NetworkSpawnMessage msg = new NetworkSpawnMessage
+                Vector3 rot = transform.rotation.eulerAngles; //TEMP
+
+                GameObject obj;
+                if (serv.networkManager.SpawnWithID(NetworkSpawnObject.BULLET, id, 0, teamID, position, rot, out obj))
                 {
-                    objectType = (uint)NetworkSpawnObject.BULLET,
-                    networkID = id,
-                    teamID = teamID,
-                    pos = position
-                };
+                    obj.GetComponent<NetworkObject>().isServer = true;
 
-                serv.SendBroadcast(msg);
+                    NetworkSpawnMessage msg = new NetworkSpawnMessage
+                    {
+                        objectType = (uint)NetworkSpawnObject.BULLET,
+                        networkID = id,
+                        teamID = teamID,
+                        pos = position,
+                        rot = rot
+                    };
+
+                    serv.SendBroadcast(msg);
+                }
             }
+           
            
         }
 
-        public void PushPlayer(Server serv, Vector3 direction)
+        public void PushPlayer(Vector3 direction)
         {
-
-            InputUpdate update = new InputUpdate(0, -5f);
-
-            InputUpdateMessage msg = new InputUpdateMessage
-            {
-                networkID = this.networkID,
-                input = update
-            };
-
-            serv.SendBroadcast(msg);
+            MovePLayer(direction);
         }
 
         public void SetPlayerState(Server serv, int state)
         {
             //Set Ready
-            //serv.server_UI.playerInfo[networkID].state = (ClientState)state;
-            serv.server_UI.SetReady(serv, networkID, state);
-
-            //UpdatePlayerCard
-            //serv.server_UI.UpdatePlayerCard(networkID);
-
+            serv.server_UI.SetPlayerState(serv, clientID, state);
         }
     }
 }
