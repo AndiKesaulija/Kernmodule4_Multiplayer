@@ -48,9 +48,9 @@ namespace ChatClientExample
             blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
         }
         
-        public void CloseWindow(Image window)
+        public void ToggleWindow(Image window)
         {
-            window.gameObject.SetActive(false);
+            window.gameObject.SetActive(!window.gameObject.activeInHierarchy);
         }
     }
 }

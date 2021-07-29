@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using System;
+using Newtonsoft.Json;
 
 
 public class NetworkBehavior : MonoBehaviour
@@ -12,6 +14,7 @@ public class NetworkBehavior : MonoBehaviour
     public string password;
 
     UserInfo userInfo = new UserInfo();
+    public ScoreData userScores = new ScoreData();
 
     void Start()
     {
@@ -32,6 +35,10 @@ public class NetworkBehavior : MonoBehaviour
     public void UpdateUser()
     {
         StartCoroutine(UpdateData());
+    }
+    public void GetPlayerScore()
+    {
+        StartCoroutine(GetPlayerScoreRequest(1, 1));
     }
     IEnumerator UpdateData()
     {
@@ -106,6 +113,31 @@ public class NetworkBehavior : MonoBehaviour
         }
     }
 
+    public IEnumerator GetPlayerScoreRequest(int serverID, int userID)
+    {
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(
+            $"https://studenthome.hku.nl/~Andi.Kesaulija/user_get_score.php?serverID={serverID}&userID={userID}"
+            ))
+        {
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.error != null)
+            {
+                Debug.Log(webRequest.error);
+                Debug.Log("UNITY: Error");
+            }
+            else
+            {
+                string json = webRequest.downloadHandler.text;
+
+                //check Json Data if correct
+                GetPlayerScoreData(json);
+
+            }
+
+        }
+    }
+
     private void SetStaticData(string text)
     {
         //ReadJSON
@@ -119,16 +151,33 @@ public class NetworkBehavior : MonoBehaviour
             UserData.password = userInfo.password;
             Debug.Log("UserName: " + UserData.name + " Email: " + UserData.email + " Password: " + UserData.password);
 
-            SceneManager.LoadScene(5);
+            SceneManager.LoadScene(4);
 
         }
         catch
         {
             Debug.Log("Invalid Data");
         }
-       
+    }
 
+    //Deserialize ARRAY 
+    private void GetPlayerScoreData(string text)
+    {
+        //ReadJSON
+        try
+        {
 
+            //JsonConvert.DeserializeObject<ScoreData>(text);
+            userScores.highScore = JsonConvert.DeserializeObject<ScoreInfo[]>(text);
+
+            //CustomDeserialisor.DeserializeScoreData(text);
+            //CustomDeserialisor.Deserialize<ScoreData>(text);
+            //Debug.Log(JsonUtility.FromJson<ScoreInfo[]>(text));
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e);
+        }
     }
     public void ReadUserInputField(string input)
     {

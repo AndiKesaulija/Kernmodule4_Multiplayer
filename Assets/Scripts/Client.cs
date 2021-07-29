@@ -5,6 +5,8 @@ using UnityEngine.Assertions;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+
 
 namespace ChatClientExample
 {
@@ -39,7 +41,7 @@ namespace ChatClientExample
 
         public NetworkManager networkManager;
         public Client_UI client_UI;
-        public string clientName = "Player_Name";
+        public string clientName = UserData.name;
 
         public uint clientID;
         private InputUpdate myInput;
@@ -55,7 +57,8 @@ namespace ChatClientExample
             m_Connection = default(NetworkConnection);
 
             //var endpoint = NetworkEndPoint.LoopbackIpv4;
-            var endpoint = NetworkEndPoint.Parse("127.0.0.1", 1511);
+            //var endpoint = NetworkEndPoint.Parse("127.0.0.1", 1511);
+            var endpoint = NetworkEndPoint.Parse(UserData.ipAddress, UserData.port);
             //endpoint.Port = 1511;
             m_Connection = m_Driver.Connect(endpoint);
 
@@ -67,6 +70,7 @@ namespace ChatClientExample
         }
         public void OnDestroy()
         {
+            Disconect();
             m_Driver.Dispose();
         }
         void Update()
@@ -232,7 +236,21 @@ namespace ChatClientExample
 
             if (client.networkManager.networkedReferences.ContainsKey(msg.networkID))
             {
+                ChatMessage logMsg = new ChatMessage
+                {
+                    message = $"DestroyMsg ID:{msg.networkID}"
+                };
+
                 client.networkManager.DestroyWithID(msg.networkID);
+                HandleChatMessage(client, logMsg);
+            }
+            else
+            {
+                ChatMessage logMsg = new ChatMessage
+                {
+                    message = $"DestroyMsg ID:{msg.networkID}: FAILED"
+                };
+                HandleChatMessage(client, logMsg);
             }
 
         }
@@ -297,13 +315,27 @@ namespace ChatClientExample
 
             SendPackedMessage(chatMsg);
         }
+        public void ReturnToLobby()
+        {
+            GameLobbyMessage msg = new GameLobbyMessage
+            {
+                clientID = clientID
+            };
+
+            client_UI.ToggleWindow(client_UI.window_TeamSelection);
+            SendPackedMessage(msg);
+        }
         public void Disconect()
         {
-            QuitMessage quitGame = new QuitMessage
+            GameQuitMessage quitGame = new GameQuitMessage
             {
-                //networkID = clientID
+                clientID = clientID
             };
             SendPackedMessage(quitGame);
+
+            SceneManager.LoadScene("LoginClient");
+
+
         }
 
 
@@ -316,7 +348,7 @@ namespace ChatClientExample
                 teamNum = (uint)teamNum
             };
             SendPackedMessage(msg);
-            client_UI.CloseWindow(client_UI.window_TeamSelection);
+            client_UI.ToggleWindow(client_UI.window_TeamSelection);
 
         }
         public void ReadInputField(string input)

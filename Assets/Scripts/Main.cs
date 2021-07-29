@@ -7,22 +7,18 @@ public class Main : MonoBehaviour
 {
 
     public NetworkBehavior networkBehavior;
-    
+
     public void HostGame()
     {
-        SceneManager.LoadScene(1);
+        SceneManager.LoadScene("Server");
     }
     public void JoinGame()
     {
-        SceneManager.LoadScene(2);
-    }
-    public void LocalGame()
-    {
-        SceneManager.LoadScene(3);
+        SceneManager.LoadScene("Client");
     }
     public void GoToRegisterUser()
     {
-        SceneManager.LoadScene(4);
+        SceneManager.LoadScene("Register");
     }
     public void RegisterUser()
     {

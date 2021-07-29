@@ -9,35 +9,38 @@ namespace ChatClientExample
     {
         public PlayerInfo player;
 
-        public Text nameText;
-        public Text clientStatusText;
-        public Text playerStatusText;
-        public Text teamText;
-        public Text currentZoneText;
+        public Text textId;
+        public Text textTeam;
+        public Text textName;
+        public Text textZone;
+        public Text textScore;
+
 
         public uint num;
-        public uint playerCardNumber { get{ return num; }}
+        public uint playerCardNumber;
 
         // Start is called before the first frame update
         void Start()
         {
-            nameText.text = player.playerName;
-            clientStatusText.text = player.clientstate.ToString();
-            teamText.text = player.team.ToString();
-            playerStatusText.text = player.playerState.ToString();
-            currentZoneText.text = player.currentZone.ToString();
+            textId.text = player.clientID.ToString();
+            textTeam.text = player.team.ToString();
+            textName.text = player.playerName;
+            textZone.text = player.currentZone.ToString();
+            textScore.text = "TODO";
+
+            
         }
 
         public void UpdateInfo(PlayerInfo info)
         {
-            nameText.text = info.playerName;
-            clientStatusText.text = info.clientstate.ToString();
-            teamText.text = info.team.ToString();
-            playerStatusText.text = info.playerState.ToString();
-            currentZoneText.text = info.currentZone.ToString();
-
-
+            Debug.Log(info.clientID);
+            textId.text = info.clientID.ToString();
+            textTeam.text = info.team.ToString();
+            textName.text = info.playerName;
+            textZone.text = info.currentZone.ToString();
+            textScore.text = "TODO";
         }
+
     }
 }
 

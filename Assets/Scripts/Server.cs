@@ -31,6 +31,7 @@ namespace ChatClientExample
         UPDATE_NETWORK_OBJECT,
         PLAYER_INFO,
         PLAYER_OUTOFBOUNDS,
+        GAME_LOBBEY,
         GAME_QUIT,
         RPC,
         CLIENT_STATE,
@@ -53,7 +54,7 @@ namespace ChatClientExample
             { NetworkMessageType.HANDSHAKE,                 typeof(HandshakeMessage) },
             { NetworkMessageType.HANDSHAKE_RESPONSE,        typeof(HandshakeResponseMessage) },
             { NetworkMessageType.CHAT_MESSAGE,              typeof(ChatMessage) },
-            //{ NetworkMessageType.CHAT_QUIT,                 typeof(ChatQuitMessage) },
+            { NetworkMessageType.CHAT_QUIT,                 typeof(ChatQuitMessage) },
             { NetworkMessageType.NETWORK_SPAWN,             typeof(NetworkSpawnMessage) },
             { NetworkMessageType.PLAYER_SPAWN,              typeof(NetworkPlayerSpawnMessage) },
             { NetworkMessageType.NETWORK_DESTROY,           typeof(NetworkDestroyMessage) },
@@ -64,7 +65,8 @@ namespace ChatClientExample
             { NetworkMessageType.UPDATE_NETWORK_OBJECT,     typeof(UpdateNetworkObjectMessage) },
             { NetworkMessageType.PING,                      typeof(PingMessage) },
             { NetworkMessageType.PONG,                      typeof(PongMessage) },
-            { NetworkMessageType.GAME_QUIT,                 typeof(QuitMessage) },
+            { NetworkMessageType.GAME_QUIT,                 typeof(GameQuitMessage) },
+            { NetworkMessageType.GAME_LOBBEY,               typeof(GameLobbyMessage) },
             { NetworkMessageType.RPC,                       typeof(RPCMessage) },
             { NetworkMessageType.CLIENT_STATE,              typeof(ClientStateMessage) },
             { NetworkMessageType.CLIENT_INFO,               typeof(ClientInfoMessage) },
@@ -83,6 +85,7 @@ namespace ChatClientExample
             { NetworkMessageType.HANDSHAKE,                 HandleClientHandshake },
             { NetworkMessageType.CHAT_MESSAGE,              HandleClientMessage },
             { NetworkMessageType.GAME_QUIT,                 HandleClientExit },
+            { NetworkMessageType.GAME_LOBBEY,               HandleClientLobbeyMessage },
             { NetworkMessageType.INPUT_UPDATE,              HandleInputMessage },
             { NetworkMessageType.PLAYER_INFO,               HandlePlayerInfoMessage },
             { NetworkMessageType.NETWORK_SPAWN,             HandleSpawnMessage },
@@ -107,7 +110,7 @@ namespace ChatClientExample
         public Dictionary<uint, PlayerInfo> playerInfo = new Dictionary<uint, PlayerInfo>();
 
         public NetworkManager networkManager;
-        //public Server_LobbyManager lobbyManager;
+
         public Server_UI server_UI;
         public GameState gameState;
         public SpawnPoint spawnPoints = new SpawnPoint();
@@ -164,6 +167,7 @@ namespace ChatClientExample
                 m_Connections.Add(c);
 
                 Debug.Log("Accepted a connection");
+
             }
 
             //HandleEvents
@@ -171,7 +175,10 @@ namespace ChatClientExample
             for (int i = 0; i < m_Connections.Length; i++)
             {
                 if (!m_Connections[i].IsCreated)
+                {
+                    Debug.Log($"{m_Connections[i]} Has No Connection");
                     continue;
+                }
 
                 // Loop through available events
                 NetworkEvent.Type cmd;
@@ -212,7 +219,7 @@ namespace ChatClientExample
                     SendReply(player.Value.connection, msg);
                 }
 
-                server_UI.UpdatePlayerCard(this, player.Value.clientID);
+                //server_UI.UpdatePlayerCard(this, player.Value.clientID);
 
             }
 
@@ -237,26 +244,14 @@ namespace ChatClientExample
                             //Cleanup Player
                             Debug.Log($"Disconnecting: Client {pongDict[m_Connections[i]].clientID}");
 
-                            //Destroy PlayerObject
-                            foreach(NetworkObject netObject in playerInfo[pongDict[m_Connections[i]].clientID].objectList)
-                            {
-                                networkManager.DestroyWithID(netObject.networkID);
-                            }
-                            
-                            //Remove PlayerCard
-                            server_UI.DisconnectPlayer(this, pongDict[m_Connections[i]].clientID);
+                            //HandleClientExit
+                            //TODO: alles wat er moet gebeuren naar de HandleClientExit en vervolgens hier aan roepen
 
-                            //Remove from nameList
-                            if (nameList.ContainsKey(m_Connections[i]))
+                            GameQuitMessage quit = new GameQuitMessage
                             {
-                                nameList.Remove(m_Connections[i]);
-                            }
-
-                            //Remove form PingList
-                            pongDict.Remove(m_Connections[i]);
-                            //Disconnect connection
-                            m_Connections[i].Disconnect(m_Driver);
-                            m_Connections[i] = default;
+                                clientID = playerInfo[pongDict[m_Connections[i]].clientID].clientID
+                            };
+                            HandleClientExit(this, m_Connections[i], quit);
                         }
                         else
                         {
@@ -283,58 +278,58 @@ namespace ChatClientExample
                 }
             }
 
-            //TEST START GAME
+            ////TEST START GAME
 
-            if(gameState == GameState.LOBBY)
-            {
-                //Check Teams
-                CheckTeamStatus();
-            }
-            if (gameState == GameState.INTERMISSION)
-            {
-                //Check if all players Ready
-                ReadyCheck();
-            }
-            if (gameState == GameState.IN_GAME)
-            {
-                //Check if round is over
-                if(CheckOutOfBounds(server_UI.teamRed) == true)
-                {
-                    if(ServerSettings.activeZone > 1)
-                    {
-                        ServerSettings.activeZone = ServerSettings.activeZone - 1;
-                        gameState = GameState.INTERMISSION;
+            //if(gameState == GameState.LOBBY)
+            //{
+            //    //Check Teams
+            //    CheckTeamStatus();
+            //}
+            //if (gameState == GameState.INTERMISSION)
+            //{
+            //    //Check if all players Ready
+            //    ReadyCheck();
+            //}
+            //if (gameState == GameState.IN_GAME)
+            //{
+            //    //Check if round is over
+            //    if(CheckOutOfBounds(server_UI.teamRed) == true)
+            //    {
+            //        if(ServerSettings.activeZone > 1)
+            //        {
+            //            ServerSettings.activeZone = ServerSettings.activeZone - 1;
+            //            gameState = GameState.INTERMISSION;
 
-                        SpawnPlayers();
-                    }
-                    else
-                    {
-                        //EndGame
-                        gameState = GameState.LOBBY;
-                        EndRound();
-                    }
+            //            SpawnPlayers();
+            //        }
+            //        else
+            //        {
+            //            //EndGame
+            //            gameState = GameState.LOBBY;
+            //            EndRound();
+            //        }
                     
-                }
-                if (CheckOutOfBounds(server_UI.teamBlue) == true)
-                {
-                    if (ServerSettings.activeZone < 5)
-                    {
-                        ServerSettings.activeZone = ServerSettings.activeZone + 1;
+            //    }
+            //    if (CheckOutOfBounds(server_UI.teamBlue) == true)
+            //    {
+            //        if (ServerSettings.activeZone < 5)
+            //        {
+            //            ServerSettings.activeZone = ServerSettings.activeZone + 1;
 
-                        gameState = GameState.INTERMISSION;
+            //            gameState = GameState.INTERMISSION;
 
-                        SpawnPlayers();
-                    }
-                    else
-                    {
-                        //EndGame
-                        gameState = GameState.LOBBY;
-                        EndRound();
-                    }
+            //            SpawnPlayers();
+            //        }
+            //        else
+            //        {
+            //            //EndGame
+            //            gameState = GameState.LOBBY;
+            //            EndRound();
+            //        }
 
-                }
+            //    }
 
-            }
+            //}
 
         }
         public void CheckTeamStatus()
@@ -631,36 +626,83 @@ namespace ChatClientExample
 
         }
 
-
         static void HandleClientExit(Server serv, NetworkConnection connection, MessageHeader header)
         {
-            QuitMessage quitmsg = header as QuitMessage;
+            GameQuitMessage msg = header as GameQuitMessage;
+            Debug.Log($"HandleClientExit ClientID:{msg.clientID}");
 
             if (serv.nameList.ContainsKey(connection))
             {
-                //Get Network ID van player
-                //Destroy PLayer
-                NetworkDestroyMessage destroyMsg = new NetworkDestroyMessage
+                //Destroy Connection owned Objects on Server and Clients
+                foreach (NetworkObject netObject in serv.playerInfo[msg.clientID].objectList)
                 {
-                    networkID = quitmsg.networkID
-                };
+                    NetworkDestroyMessage destroyMsg = new NetworkDestroyMessage
+                    {
+                        networkID = netObject.networkID
+                    };
+                    serv.networkManager.DestroyWithID(netObject.networkID);
+                    serv.SendBroadcast(destroyMsg);
+
+                }
                 //Remove from Dictionary
                 if (serv.playerInstances.ContainsKey(connection))
                 {
                     serv.playerInstances.Remove(connection);
                 }
-                //BroadCast Destroy
-                serv.SendBroadcast(destroyMsg);
+                //Remove PlayerCard
+                serv.server_UI.DisconnectPlayer(serv, msg.clientID);
+                //Remove from nameList
+                if (serv.nameList.ContainsKey(connection))
+                {
+                    serv.nameList.Remove(connection);
+                }
+                //Remove form PingList
+                serv.pongDict.Remove(connection);
 
-                serv.networkManager.DestroyWithID(quitmsg.networkID);
                 connection.Disconnect(serv.m_Driver);
-                Debug.Log("Client ID: " + quitmsg.networkID + " Has Disconected");
+                connection = default;
+                Debug.Log("Client ID: " + msg.clientID + " Has Disconected");
 
             }
             else
             {
                 Debug.LogError("Received exit from unlisted connection");
             }
+
+        }
+        static void HandleClientLobbeyMessage(Server serv, NetworkConnection connection, MessageHeader header)
+        {
+            GameLobbyMessage msg = header as GameLobbyMessage;
+            Debug.Log($"HandleClientLobbeyMessage ClientID:{msg.clientID}");
+
+            if (serv.nameList.ContainsKey(connection))
+            {
+                //Set PlayerInfo Status to IN_LOBBY
+                serv.playerInfo[msg.clientID].clientstate = ClientState.IN_LOBBY;
+
+                //Destroy Connection owned Objects on Server and Clients
+                foreach (NetworkObject netObject in serv.playerInfo[msg.clientID].objectList)
+                {
+                    NetworkDestroyMessage destroyMsg = new NetworkDestroyMessage
+                    {
+                        networkID = netObject.networkID
+                    };
+                    serv.networkManager.DestroyWithID(netObject.networkID);
+                    serv.SendBroadcast(destroyMsg);
+
+                }
+                //Remove from Dictionary
+                if (serv.playerInstances.ContainsKey(connection))
+                {
+                    serv.playerInstances.Remove(connection);
+                }
+                Debug.Log("Client ID: " + msg.clientID + " Has Returned to Lobby");
+            }
+            else
+            {
+                Debug.LogError("Received exit from unlisted connection");
+            }
+
         }
         static void HandleClientMessage(Server serv, NetworkConnection connection, MessageHeader header)
         {
@@ -799,5 +841,7 @@ namespace ChatClientExample
 
             
         }
+
+
     }
 }

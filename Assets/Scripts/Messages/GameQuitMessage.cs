@@ -6,23 +6,23 @@ using Unity.Collections;
 
 namespace ChatClientExample
 {
-    public class QuitMessage : MessageHeader
+    public class GameQuitMessage : MessageHeader
     {
         public override NetworkMessageType Type { get { return NetworkMessageType.GAME_QUIT; } }
 
-        public uint networkID;
+        public uint clientID;
         public override void SerializeObject(ref DataStreamWriter writer)
         {
             base.SerializeObject(ref writer);
 
-            writer.WriteUInt(networkID);
+            writer.WriteUInt(clientID);
         }
 
         public override void DeserializeObject(ref DataStreamReader reader)
         {
             base.DeserializeObject(ref reader);
 
-            networkID = reader.ReadUInt();
+            clientID = reader.ReadUInt();
         }
     }
 }

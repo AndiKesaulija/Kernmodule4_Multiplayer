@@ -28,6 +28,8 @@ public class LocalData : MonoBehaviour
     {
         PlayerPrefs.SetString("user", netBehavior.email);
         PlayerPrefs.SetString("password", netBehavior.password);
+
+
     }
 
 

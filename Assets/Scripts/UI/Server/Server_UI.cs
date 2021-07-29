@@ -15,66 +15,91 @@ namespace ChatClientExample
 
         public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
         public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
-        // Start is called before the first frame update
-        void Start()
+
+        //new PlayerCards
+        public Transform container;
+        public Transform template;
+
+        //public List<Transform> playercards = new List<Transform>(0);
+        public Dictionary<uint, Transform> playercards = new Dictionary<uint, Transform>();
+        float tempplateHeight = 50f;
+
+
+        public void Awake()
         {
-
+            template.gameObject.SetActive(false);
         }
-
-        // Update is called once per frame
-        void Update()
-        {
-            
-
-        }
-
         public void AddPlayerCard(Server serv, PlayerInfo info)
         {
-            //Bind playercard with playerInfo
-            for (int i = 0; i < playerCards.Count; i++)
-            {
-                if (!playerCards[i].isActiveAndEnabled)
-                {
-                    info.cardNum = playerCards[i].playerCardNumber;
-                    serv.playerInfo.Add(info.networkID, info);
+            Transform newPlayerCard = Instantiate(template, container);
+            newPlayerCard.gameObject.SetActive(true);
 
-                    playerCards[i].gameObject.SetActive(true);
-                    playerCards[i].player = info;
-                    playerCards[i].UpdateInfo(info);
+            newPlayerCard.gameObject.GetComponent<Player_Card>().player = info;
+            newPlayerCard.gameObject.GetComponent<Player_Card>().playerCardNumber = (uint)playercards.Count;
+
+            serv.playerInfo.Add(info.networkID, info);
 
 
-                    return;
-                }
-            }
+            playercards.Add(info.clientID, newPlayerCard);
+
+            RectTransform cardTransform = newPlayerCard.GetComponent<RectTransform>();
+            cardTransform.anchoredPosition = new Vector2(0, template.localPosition.y + (-tempplateHeight * playercards.Count - 1));
+
+            RepaintCards();
         }
+        public void RepaintCards()
+        {
+            //for (uint i = 0; i < playercards.Count; i++)
+            //{
+            //    playercards[i].GetComponent<RectTransform>().anchoredPosition = new Vector2(0, template.localPosition.y + (-tempplateHeight * i));
+            //}
+
+            uint cardnum = 0;//Card counter
+
+            foreach (KeyValuePair<uint,Transform> card in playercards)
+            {
+                card.Value.GetComponent<Player_Card>().playerCardNumber = cardnum;
+                card.Value.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, template.localPosition.y + (-tempplateHeight * cardnum));
+                cardnum++;
+            }
+
+        }
+        public void UpdateCard(PlayerInfo info)
+        {
+            //Update playercard met KEY cardID met info
+            playercards[info.clientID].GetComponent<Player_Card>().UpdateInfo(info);
+
+        }
+
         public void DisconnectPlayer(Server serv,uint networkID)
         {
-            playerCards[(int)serv.playerInfo[networkID].cardNum].gameObject.SetActive(false);
+            //Remove PlayerCard
+            Destroy(playercards[serv.playerInfo[networkID].clientID].gameObject);
 
+            playercards.Remove(serv.playerInfo[networkID].clientID);
+
+            RepaintCards();
+
+            //Remove from Team
+            if (teamBlue.Contains(serv.playerInfo[networkID]))
+            {
+                teamBlue.Remove(serv.playerInfo[networkID]);
+            }
+            else if(teamRed.Contains(serv.playerInfo[networkID]))
+            {
+                teamRed.Remove(serv.playerInfo[networkID]);
+            }
+
+            //Remove from server
             serv.playerInfo.Remove(networkID);
 
         }
 
-        public void UpdatePlayerCard(Server serv,uint networkID)
-        {
-            playerCards[(int)serv.playerInfo[networkID].cardNum].UpdateInfo(serv.playerInfo[networkID]);
-        }
         public void UpdateServerSettings()
         {
             redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
             blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
         }
-        public void UpdatePlayerCards(Server serv)
-        {
-            for (int i = 0; i < playerCards.Count; i++)
-            {
-                if (playerCards[i].isActiveAndEnabled)
-                {
-                    playerCards[i].UpdateInfo(serv.playerInfo[playerCards[i].player.networkID]);
-                }
-            }
-        }
-
         public void JoinTeam(Server serv,uint clientID, uint teamNum)
         {
             serv.playerInfo[clientID].team = (Team)teamNum;
@@ -97,7 +122,8 @@ namespace ChatClientExample
 
             serv.playerInfo[clientID].clientstate = ClientState.IN_GAME;
 
-            playerCards[(int)serv.playerInfo[clientID].cardNum].UpdateInfo(serv.playerInfo[clientID]);
+            UpdateCard(serv.playerInfo[clientID]);
+            //playerCards[(int)serv.playerInfo[clientID].cardNum].UpdateInfo(serv.playerInfo[clientID]);
 
             UpdateServerSettings();
 
@@ -106,8 +132,14 @@ namespace ChatClientExample
         {
             serv.playerInfo[networkID].playerState = (PlayerState)state;
 
-            UpdatePlayerCard(serv, networkID);
+            UpdateCard(serv.playerInfo[networkID]);
 
+        }
+
+        public void SetTeamSize(Dropdown count)
+        {
+            ServerSettings.maxTeamPlayerCount = (uint)count.value + 1;
+            Debug.Log(ServerSettings.maxTeamPlayerCount);
         }
 
     }
