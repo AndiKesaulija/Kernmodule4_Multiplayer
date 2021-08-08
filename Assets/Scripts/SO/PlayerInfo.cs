@@ -7,7 +7,6 @@ namespace ChatClientExample
 {
     public enum ClientState
     {
-        SPECTATING,
         IN_LOBBY,
         IN_GAME,
     }
@@ -25,6 +24,7 @@ namespace ChatClientExample
     }
     public class PlayerInfo
     {
+        public int userID;
         public uint clientID;
         public uint networkID;
         public string playerName;
@@ -38,7 +38,6 @@ namespace ChatClientExample
         //SpawnPosition
         public Team team;
         public uint teamPos;
-        //public uint round;
 
         public Vector3 spawnPos;
         public Vector3 spawnRot;
@@ -46,6 +45,7 @@ namespace ChatClientExample
         public uint currentZone;
         public uint activeZone;
 
+        public uint score;
     }
 }
 

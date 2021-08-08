@@ -7,7 +7,10 @@ public class Main : MonoBehaviour
 {
 
     public NetworkBehavior networkBehavior;
-
+    public void Awake()
+    {
+        Screen.SetResolution(1920,1080, false);
+    }
     public void HostGame()
     {
         SceneManager.LoadScene("Server");
@@ -27,7 +30,6 @@ public class Main : MonoBehaviour
     public void LoginClient()
     {
         networkBehavior.LoginUser();
-        //SceneManager.LoadScene(5); 
     }
 
 }

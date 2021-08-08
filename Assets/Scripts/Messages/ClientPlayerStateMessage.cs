@@ -5,28 +5,27 @@ using UnityEngine;
 
 namespace ChatClientExample
 {
-    public class PlayerInfoMessage : MessageHeader
+    public class ClientPlayerStateMessage : MessageHeader
     {
-        public override NetworkMessageType Type { get { return NetworkMessageType.PLAYER_INFO; } }
+        public override NetworkMessageType Type { get { return NetworkMessageType.CLIENT_PLAYER_STATE; } }
 
-        public PlayerInfo info;
+        public uint clientID;
+        public PlayerState state;
+
         public override void SerializeObject(ref DataStreamWriter writer)
         {
             base.SerializeObject(ref writer);
 
-            writer.WriteUInt(info.clientID);
-
-            writer.WriteUInt(info.currentZone);
+            writer.WriteUInt(clientID);
+            writer.WriteInt((int)state);
         }
-
         public override void DeserializeObject(ref DataStreamReader reader)
         {
             base.DeserializeObject(ref reader);
 
-            info.clientID = reader.ReadUInt();
-
-            info.currentZone = reader.ReadUInt();
+            clientID = reader.ReadUInt();
+            state = (PlayerState)reader.ReadInt();
         }
     }
-
 }
+

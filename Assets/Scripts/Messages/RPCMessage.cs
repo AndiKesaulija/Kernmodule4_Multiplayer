@@ -50,6 +50,10 @@ namespace ChatClientExample
                 {
                     writer.WriteInt((int)data[i]);
                 }
+                else if (parameters[i].ParameterType == typeof(uint))
+                {
+                    writer.WriteUInt((uint)data[i]);
+                }
                 else if (parameters[i].ParameterType == typeof(Vector3))
                 {
                     Vector3 vec = (Vector3)data[i];
@@ -117,6 +121,10 @@ namespace ChatClientExample
                 else if (parameters[i].ParameterType == typeof(int))
                 {
                     data[i] = reader.ReadInt();
+                }
+                else if (parameters[i].ParameterType == typeof(uint))
+                {
+                    data[i] = reader.ReadUInt();
                 }
                 else if (parameters[i].ParameterType == typeof(Vector3))
                 {

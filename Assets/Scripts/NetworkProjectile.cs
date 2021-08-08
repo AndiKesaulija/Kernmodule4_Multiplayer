@@ -7,9 +7,12 @@ namespace ChatClientExample
     public class NetworkProjectile : NetworkObject
     {
         public Rigidbody rb;
+        public Vector3 direction;
         public float speed = 10;
+        public uint power;
 
         public Server serv;
+
 
     void Start()
         {
@@ -23,7 +26,19 @@ namespace ChatClientExample
 
         void Update()
         {
-
+            if (isServer)
+            {
+                //Stop Projectile if game not running
+                if (serv.gameManager.gameState != GameState.IN_GAME)
+                {
+                    direction = Vector3.zero;
+                }
+                else if (direction != Vector3.forward)
+                {
+                    direction = Vector3.forward;
+                }
+            }
+           
         }
       
         private void OnTriggerEnter(Collider other)
@@ -34,7 +49,7 @@ namespace ChatClientExample
             }
             if (isServer)
             {
-                if(serv.gameState == GameState.IN_GAME)
+                if(serv.gameManager.gameState == GameState.IN_GAME)
                 {
                     if (other.GetComponent<NetworkObject>())
                     {
@@ -42,20 +57,11 @@ namespace ChatClientExample
                         {
                             if (other.GetComponent<NetworkObject>().type == NetworkSpawnObject.PLAYER)
                             {
-                                ////Send to Clients
-                                //InputUpdate update = new InputUpdate(0, -5f, 0);
-                                //InputUpdateMessage push = new InputUpdateMessage
-                                //{
-                                //    networkID = other.GetComponent<NetworkObject>().networkID,
-                                //    input = update
-                                //};
 
-                                //serv.SendBroadcast(push);
-
-                                ////TODO: Move Local?
-                                //other.GetComponent<NetworkPlayer>().UpdateInput(update);
-
-                                other.GetComponent<NetworkPlayer>().PushPlayer(new Vector3(0, 0, -5f));
+                                other.GetComponent<NetworkPlayer>().PushPlayer(new Vector3(0, 0, -5f), power);
+                                //AddScore
+                                serv.playerInfo[clientID].score += 10;
+                                serv.server_UI.UpdateCard(serv.playerInfo[clientID]);
 
                             }
 
@@ -75,9 +81,9 @@ namespace ChatClientExample
         }
         private void FixedUpdate()
         {
-            MoveProjectile(Vector3.forward);
+            MoveProjectile();
         }
-        void MoveProjectile(Vector3 direction)
+        void MoveProjectile()
         {
             transform.Translate(direction * speed * Time.deltaTime);
 

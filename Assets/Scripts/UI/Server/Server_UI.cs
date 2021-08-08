@@ -8,14 +8,15 @@ namespace ChatClientExample
     public class Server_UI : MonoBehaviour
     {
 
-        public List<Player_Card> playerCards;
+        //public List<Player_Card> playerCards;
 
-        public List<PlayerInfo> teamRed = new List<PlayerInfo>(3);
-        public List<PlayerInfo> teamBlue = new List<PlayerInfo>(3);
+        //public List<PlayerInfo> teamRed = new List<PlayerInfo>(3);
+        //public List<PlayerInfo> teamBlue = new List<PlayerInfo>(3);
 
-        public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
-        public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
+        //public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
+        //public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
 
+        public Server serv;
         //new PlayerCards
         public Transform container;
         public Transform template;
@@ -37,7 +38,6 @@ namespace ChatClientExample
             newPlayerCard.gameObject.GetComponent<Player_Card>().player = info;
             newPlayerCard.gameObject.GetComponent<Player_Card>().playerCardNumber = (uint)playercards.Count;
 
-            serv.playerInfo.Add(info.networkID, info);
 
 
             playercards.Add(info.clientID, newPlayerCard);
@@ -49,11 +49,6 @@ namespace ChatClientExample
         }
         public void RepaintCards()
         {
-            //for (uint i = 0; i < playercards.Count; i++)
-            //{
-            //    playercards[i].GetComponent<RectTransform>().anchoredPosition = new Vector2(0, template.localPosition.y + (-tempplateHeight * i));
-            //}
-
             uint cardnum = 0;//Card counter
 
             foreach (KeyValuePair<uint,Transform> card in playercards)
@@ -80,66 +75,26 @@ namespace ChatClientExample
 
             RepaintCards();
 
-            //Remove from Team
-            if (teamBlue.Contains(serv.playerInfo[networkID]))
-            {
-                teamBlue.Remove(serv.playerInfo[networkID]);
-            }
-            else if(teamRed.Contains(serv.playerInfo[networkID]))
-            {
-                teamRed.Remove(serv.playerInfo[networkID]);
-            }
-
             //Remove from server
             serv.playerInfo.Remove(networkID);
 
         }
-
-        public void UpdateServerSettings()
-        {
-            redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
-            blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
-        }
-        public void JoinTeam(Server serv,uint clientID, uint teamNum)
-        {
-            serv.playerInfo[clientID].team = (Team)teamNum;
-
-            if(teamNum == 1)
-            {
-                serv.playerInfo[clientID].teamPos = ServerSettings.redTeamPlayerCount;
-
-                ServerSettings.redTeamPlayerCount++;
-                teamRed.Add(serv.playerInfo[clientID]);
-            }
-            if (teamNum == 2)
-            {
-                serv.playerInfo[clientID].teamPos = ServerSettings.blueTeamPlayerCount;
-
-                ServerSettings.blueTeamPlayerCount++;
-                teamBlue.Add(serv.playerInfo[clientID]);
-
-            }
-
-            serv.playerInfo[clientID].clientstate = ClientState.IN_GAME;
-
-            UpdateCard(serv.playerInfo[clientID]);
-            //playerCards[(int)serv.playerInfo[clientID].cardNum].UpdateInfo(serv.playerInfo[clientID]);
-
-            UpdateServerSettings();
-
-        }
-        public void SetPlayerState(Server serv,uint networkID, int state)
-        {
-            serv.playerInfo[networkID].playerState = (PlayerState)state;
-
-            UpdateCard(serv.playerInfo[networkID]);
-
-        }
+        
 
         public void SetTeamSize(Dropdown count)
         {
             ServerSettings.maxTeamPlayerCount = (uint)count.value + 1;
             Debug.Log(ServerSettings.maxTeamPlayerCount);
+
+            ServerInfoMessage msg = new ServerInfoMessage();
+
+            //ResetGame
+            serv.gameManager.ClearGame();
+
+            //Update Clients
+            serv.SendBroadcast(msg);
+
+
         }
 
     }

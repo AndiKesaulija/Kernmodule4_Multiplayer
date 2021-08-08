@@ -607,8 +607,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   networkManager: {fileID: 376190601}
+  networkBehavior: {fileID: 376190603}
   server_UI: {fileID: 376190602}
-  gameState: 0
+  redteamcount: 0
+  blueteamcount: 0
 --- !u!114 &376190601
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -622,6 +624,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spawnInfo: {fileID: 11400000, guid: 27c34f7d3f00c784cb3917362f297e99, type: 2}
+  isServer: 1
+  serv: {fileID: 376190600}
 --- !u!114 &376190602
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -634,15 +638,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20b8fa4d7791ddb45adc218714dc95a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCards:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  redTeamCounter: 0
-  blueTeamCounter: 0
+  serv: {fileID: 376190600}
   container: {fileID: 316001211}
   template: {fileID: 570857698}
 --- !u!114 &376190603
@@ -654,10 +650,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 376190598}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53160e0c613217f4f9a429aa134840a7, type: 3}
+  m_Script: {fileID: 11500000, guid: 0da690823980ee84db8d332c421f1d47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  serv: {fileID: 376190600}
+  user: 
+  email: 
+  password: 
+  userScores:
+    highScore: []
 --- !u!1 &383200099
 GameObject:
   m_ObjectHideFlags: 0
@@ -1314,7 +1314,7 @@ GameObject:
   - component: {fileID: 734850995}
   - component: {fileID: 734850994}
   m_Layer: 5
-  m_Name: Lobby
+  m_Name: ReturnToLobby
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1384,9 +1384,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 376190603}
-        m_TargetAssemblyTypeName: ChatClientExample.ServerManager, Assembly-CSharp
-        m_MethodName: ReturnPlayersToLobbey
+      - m_Target: {fileID: 376190600}
+        m_TargetAssemblyTypeName: ChatClientExample.Server, Assembly-CSharp
+        m_MethodName: ClearGameFunction
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1675,7 +1675,7 @@ GameObject:
   - component: {fileID: 809077857}
   - component: {fileID: 809077856}
   m_Layer: 5
-  m_Name: Text_TeamSize
+  m_Name: TeamSize
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1897,6 +1897,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 903797320}
   m_CullTransparentMesh: 1
+--- !u!1 &1003083221 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 142685499557140069, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+  m_PrefabInstance: {fileID: 1936302465163465600}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1003083222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1003083221}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkID: 0
+  clientID: 0
+  teamID: 0
+  type: 2
+  isServer: 1
+  isLocal: 0
 --- !u!1 &1287971978
 GameObject:
   m_ObjectHideFlags: 0
@@ -2149,6 +2172,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1347659386}
   m_CullTransparentMesh: 1
+--- !u!1 &1349133549 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4397455686258417231, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+  m_PrefabInstance: {fileID: 1936302465163465600}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1349133550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349133549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkID: 0
+  clientID: 0
+  teamID: 0
+  type: 2
+  isServer: 1
+  isLocal: 0
 --- !u!1 &1428023539
 GameObject:
   m_ObjectHideFlags: 0
@@ -2500,6 +2546,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1785498220}
   m_CullTransparentMesh: 1
+--- !u!1 &1791229665 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3170391216273259606, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+  m_PrefabInstance: {fileID: 1936302465163465600}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1791229666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1791229665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkID: 0
+  clientID: 0
+  teamID: 0
+  type: 2
+  isServer: 1
+  isLocal: 0
 --- !u!1 &1837497347
 GameObject:
   m_ObjectHideFlags: 0
@@ -2605,6 +2674,59 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1945211089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkID: 0
+  clientID: 0
+  teamID: 0
+  type: 2
+  isServer: 1
+  isLocal: 0
+--- !u!1 &1997622160
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1997622161}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1997622161
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1997622160}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 849.5388, y: 545.72363, z: -70.38046}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 6
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2004197771 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7024593526703027735, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+  m_PrefabInstance: {fileID: 1936302465163465600}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2004197772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2004197771}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
@@ -2774,6 +2896,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2094328939}
   m_CullTransparentMesh: 1
+--- !u!1 &2107585839 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3175896381089119350, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+  m_PrefabInstance: {fileID: 1936302465163465600}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2107585840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2107585839}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e365826d301c45343b5c83cbb216c837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkID: 0
+  clientID: 0
+  teamID: 0
+  type: 2
+  isServer: 1
+  isLocal: 0
 --- !u!1001 &1936302465163465600
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2784,6 +2929,10 @@ PrefabInstance:
     - target: {fileID: 1936302465990715948, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
       propertyPath: m_Name
       value: Arena
+      objectReference: {fileID: 0}
+    - target: {fileID: 1936302465990715949, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
+      propertyPath: m_Size.z
+      value: 1.25
       objectReference: {fileID: 0}
     - target: {fileID: 1936302465990715952, guid: 33c69ee7594d89148ac4e4df72ce6195, type: 3}
       propertyPath: m_RootOrder

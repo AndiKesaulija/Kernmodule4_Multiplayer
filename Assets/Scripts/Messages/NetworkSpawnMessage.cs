@@ -9,14 +9,14 @@ namespace ChatClientExample
     {
         public override NetworkMessageType Type { get { return NetworkMessageType.NETWORK_SPAWN; } }
 
+        public uint objectType;
         public uint networkID;
         public uint clientID;
-        public uint objectType;
         public uint teamID = 0;
-
 
         public Vector3 pos;
         public Vector3 rot;
+
 
 
 
@@ -35,6 +35,8 @@ namespace ChatClientExample
             writer.WriteFloat(rot.x);
             writer.WriteFloat(rot.y);
             writer.WriteFloat(rot.z);
+
+
         }
 
         public override void DeserializeObject(ref DataStreamReader reader)
@@ -47,7 +49,6 @@ namespace ChatClientExample
 
             pos = new Vector3(reader.ReadFloat(), reader.ReadFloat(), reader.ReadFloat());
             rot = new Vector3(reader.ReadFloat(), reader.ReadFloat(), reader.ReadFloat());
-
 
         }
     }

@@ -35,6 +35,12 @@ namespace ChatClientExample
         public uint currentZone;
         private uint updateZone;
 
+        public float spellCooldown = 100;
+        public float cooldown;
+        public uint maxPower = 100;
+        public uint power = 0;
+
+
 
         void Start()
         {
@@ -47,51 +53,64 @@ namespace ChatClientExample
 
                 client.spectatorCam.enabled = false;
                 myCam.enabled = true;
-                //if (Camera.main)
-                //{
-                //    Camera.main.enabled = false;
-                //}
+                client.client_UI.player = this;
+
+                cooldown = spellCooldown;
+
             }
             if (isServer)
             {
                 serv = FindObjectOfType<Server>();
                 currentZone = CheckPlayerPosition(transform.position.z);
+                serv.server_UI.UpdateCard(serv.playerInfo[clientID]);
+
             }
 
         }
 
         void Update()
         {
-
+            
             if (isLocal)
 			{
                 InputUpdate update = new InputUpdate(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 
-                
-
                 InputUpdateMessage msg = new InputUpdateMessage
                 {
-                    networkID = this.networkID,
+                    networkID = networkID,
+                    clientID = clientID,
                     input = update,
 
                 };
 
                 client.SendPackedMessage(msg);
 
-                if (Input.GetMouseButtonDown(0))
+                if (cooldown < spellCooldown)
                 {
-                    Debug.Log("MouseDown");
+                    cooldown += 1;
+                }
 
-                    //RPCMessage RPCmsg = new RPCMessage
-                    //{
-                    //    target = this,
-                    //    methodName = "Fire",
-                    //    data = new object[] { null, transform.position }
-                    //};
+                if(cooldown >= spellCooldown)
+                {
+                    if (Input.GetMouseButton(0))
+                    {
+                        if(power < maxPower)
+                        {
+                            power += 1;
+                        }
+                    }
+                }
+                
+                if (Input.GetMouseButtonUp(0))
+                {
+                    if(cooldown >= spellCooldown)
+                    {
+                        client.CallOnServerObject("Fire", this, null, transform.position, clientID, power);
+                        cooldown = 0;
+                    }
+                    power = 0;
 
-                    //client.SendPackedMessage(RPCmsg);
 
-                    client.CallOnServerObject("Fire", this, null, transform.position);
                 }
                 if (Input.GetMouseButtonDown(1))
                 {
@@ -103,12 +122,11 @@ namespace ChatClientExample
             if (isServer)
             {
                 updateZone = CheckPlayerPosition(transform.position.z);
-                if(updateZone != currentZone)
+                if (updateZone != currentZone)
                 {
                     serv.playerInfo[clientID].currentZone = updateZone;
-
-                    serv.HandleOutOfBounds(clientID, networkID);
-                    //SetPlayerState(serv, (int)PlayerState.OUT_OF_BOUNDS);
+                    serv.server_UI.UpdateCard(serv.playerInfo[clientID]);
+                    serv.gameManager.HandleOutOfBounds(clientID, networkID);
 
                 }
                 currentZone = updateZone;
@@ -164,34 +182,35 @@ namespace ChatClientExample
         }
         void MovePLayer(Vector3 direction)
         {
-            //Gebruik RB met axis?
             transform.Translate(direction * speed * Time.deltaTime);
 
-
-            //rb.MovePosition(transform.position + (direction * speed * Time.deltaTime));
-            //rb.velocity = direction * speed;
         }
 
-        public void Fire(Server serv,Vector3 position)
+        public void Fire(Server serv,Vector3 position, uint clientID, uint power)
         {
-            if(serv.gameState == GameState.IN_GAME)
+            if (serv.gameManager.gameState == GameState.IN_GAME && serv.playerInfo[clientID].playerState == PlayerState.READY)
             {
-                uint id = serv.networkManager.GetNextID();
+                uint networkID = serv.networkManager.GetNextID();
 
                 Vector3 rot = transform.rotation.eulerAngles; //TEMP
 
                 GameObject obj;
-                if (serv.networkManager.SpawnWithID(NetworkSpawnObject.BULLET, id, 0, teamID, position, rot, out obj))
+                if (serv.networkManager.SpawnWithID(NetworkSpawnObject.BULLET, networkID, clientID, teamID, position, rot, out obj))
                 {
+
+                    Debug.Log("Power: " + power);
+
                     obj.GetComponent<NetworkObject>().isServer = true;
+                    obj.GetComponent<NetworkProjectile>().power = power;
 
                     NetworkSpawnMessage msg = new NetworkSpawnMessage
                     {
                         objectType = (uint)NetworkSpawnObject.BULLET,
-                        networkID = id,
+                        networkID = networkID,
+                        clientID = clientID,
                         teamID = teamID,
                         pos = position,
-                        rot = rot
+                        rot = rot,
                     };
 
                     serv.SendBroadcast(msg);
@@ -201,15 +220,16 @@ namespace ChatClientExample
            
         }
 
-        public void PushPlayer(Vector3 direction)
+        public void PushPlayer(Vector3 direction, uint power)
         {
+            direction = direction - new Vector3(0, 0, power / 10);
             MovePLayer(direction);
         }
 
         public void SetPlayerState(Server serv, int state)
         {
             //Set Ready
-            serv.server_UI.SetPlayerState(serv, clientID, state);
+            serv.gameManager.SetPlayerState(serv, clientID, state);
         }
     }
 }

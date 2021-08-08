@@ -20,7 +20,7 @@ namespace ChatClientExample
             base.SerializeObject(ref writer);
 
             //writer.WriteUInt(clientID);
-            writer.WriteFixedString128(new FixedString128($"Welcome {message.ToString()}!"));
+            writer.WriteFixedString128(new FixedString128($"{message.ToString()}!"));
             writer.WriteUInt(clientID);
         }
         public override void DeserializeObject(ref DataStreamReader reader)

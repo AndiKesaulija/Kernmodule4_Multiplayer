@@ -26,19 +26,18 @@ namespace ChatClientExample
             textTeam.text = player.team.ToString();
             textName.text = player.playerName;
             textZone.text = player.currentZone.ToString();
-            textScore.text = "TODO";
+            textScore.text = player.score.ToString();
 
             
         }
 
         public void UpdateInfo(PlayerInfo info)
         {
-            Debug.Log(info.clientID);
             textId.text = info.clientID.ToString();
             textTeam.text = info.team.ToString();
             textName.text = info.playerName;
             textZone.text = info.currentZone.ToString();
-            textScore.text = "TODO";
+            textScore.text = info.score.ToString();
         }
 
     }

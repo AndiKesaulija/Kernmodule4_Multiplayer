@@ -38,7 +38,12 @@ public class NetworkBehavior : MonoBehaviour
     }
     public void GetPlayerScore()
     {
-        StartCoroutine(GetPlayerScoreRequest(1, 1));
+        StartCoroutine(GetPlayerScoreRequest(1, UserData.id));
+    }
+    public void SetPlayerScore(int serverID, int userID, uint score)
+    {
+        StartCoroutine(SetPlayerScoreRequest(serverID, userID, score));
+
     }
     IEnumerator UpdateData()
     {
@@ -115,6 +120,7 @@ public class NetworkBehavior : MonoBehaviour
 
     public IEnumerator GetPlayerScoreRequest(int serverID, int userID)
     {
+
         using (UnityWebRequest webRequest = UnityWebRequest.Get(
             $"https://studenthome.hku.nl/~Andi.Kesaulija/user_get_score.php?serverID={serverID}&userID={userID}"
             ))
@@ -137,6 +143,30 @@ public class NetworkBehavior : MonoBehaviour
 
         }
     }
+    public IEnumerator SetPlayerScoreRequest(int serverID, int userID, uint score)
+    {
+        Debug.Log($"ServerID: {serverID} userID: {userID} Score: {score}");
+
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(
+            $"https://studenthome.hku.nl/~Andi.Kesaulija/user_set_score.php?serverID={serverID}&userID={userID}&score={score}"
+            ))
+        {
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.error != null)
+            {
+                Debug.Log(webRequest.error);
+                Debug.Log("UNITY: Error");
+            }
+            else
+            {
+                string json = webRequest.downloadHandler.text;
+
+                Debug.Log(json);
+            }
+
+        }
+    }
 
     private void SetStaticData(string text)
     {
@@ -149,7 +179,7 @@ public class NetworkBehavior : MonoBehaviour
             UserData.name = userInfo.name;
             UserData.email = userInfo.email;
             UserData.password = userInfo.password;
-            Debug.Log("UserName: " + UserData.name + " Email: " + UserData.email + " Password: " + UserData.password);
+            Debug.Log("ID:" + UserData.id + " UserName: " + UserData.name + " Email: " + UserData.email + " Password: " + UserData.password);
 
             SceneManager.LoadScene(4);
 
@@ -166,13 +196,7 @@ public class NetworkBehavior : MonoBehaviour
         //ReadJSON
         try
         {
-
-            //JsonConvert.DeserializeObject<ScoreData>(text);
             userScores.highScore = JsonConvert.DeserializeObject<ScoreInfo[]>(text);
-
-            //CustomDeserialisor.DeserializeScoreData(text);
-            //CustomDeserialisor.Deserialize<ScoreData>(text);
-            //Debug.Log(JsonUtility.FromJson<ScoreInfo[]>(text));
         }
         catch (Exception e)
         {

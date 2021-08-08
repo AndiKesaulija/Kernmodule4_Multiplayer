@@ -10,6 +10,7 @@ namespace ChatClientExample
         public override NetworkMessageType Type { get { return NetworkMessageType.INPUT_UPDATE; } }
 
         public uint networkID;
+        public uint clientID;
         public InputUpdate input;
 
         public override void SerializeObject(ref DataStreamWriter writer)
@@ -17,6 +18,7 @@ namespace ChatClientExample
             base.SerializeObject(ref writer);
 
             writer.WriteUInt(networkID);
+            writer.WriteUInt(clientID);
             writer.WriteFloat(input.horizontal);
             writer.WriteFloat(input.vertical);
 
@@ -27,6 +29,7 @@ namespace ChatClientExample
             base.DeserializeObject(ref reader);
 
             networkID = reader.ReadUInt();
+            clientID = reader.ReadUInt();
             input.horizontal = reader.ReadFloat();
             input.vertical = reader.ReadFloat();
 

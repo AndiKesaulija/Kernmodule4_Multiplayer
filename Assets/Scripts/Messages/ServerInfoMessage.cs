@@ -9,12 +9,17 @@ namespace ChatClientExample
     {
         public override NetworkMessageType Type { get { return NetworkMessageType.SERVER_INFO; } }
 
+        public uint maxTeamCount = ServerSettings.maxTeamPlayerCount;
+        public uint redteamCount = ServerSettings.redTeamPlayerCount;
+        public uint blueteamCount = ServerSettings.blueTeamPlayerCount;
+
         public override void SerializeObject(ref DataStreamWriter writer)
         {
             base.SerializeObject(ref writer);
 
-            writer.WriteUInt(ServerSettings.redTeamPlayerCount);
-            writer.WriteUInt(ServerSettings.blueTeamPlayerCount);
+            writer.WriteUInt(maxTeamCount);
+            writer.WriteUInt(redteamCount);
+            writer.WriteUInt(blueteamCount);
 
         }
 
@@ -22,6 +27,7 @@ namespace ChatClientExample
         {
             base.DeserializeObject(ref reader);
 
+            ServerSettings.maxTeamPlayerCount = reader.ReadUInt();
             ServerSettings.redTeamPlayerCount = reader.ReadUInt();
             ServerSettings.blueTeamPlayerCount = reader.ReadUInt();
         }

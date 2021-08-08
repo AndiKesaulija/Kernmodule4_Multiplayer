@@ -186,16 +186,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   networkID: 0
+  clientID: 0
   teamID: 0
   type: 0
   isServer: 0
   isLocal: 0
   client: {fileID: 0}
+  serv: {fileID: 0}
   myCam: {fileID: 0}
   rb: {fileID: 0}
   direction: {x: 0, y: 0, z: 0}
   speed: 10
   currentZone: 0
+  spellCooldown: 100
+  cooldown: 0
+  maxPower: 100
+  power: 0
 --- !u!54 &-4395333954841745663
 Rigidbody:
   m_ObjectHideFlags: 0

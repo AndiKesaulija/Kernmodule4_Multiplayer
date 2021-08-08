@@ -12,8 +12,14 @@ namespace ChatClientExample
         public Button joinRed;
         public Button joinBlue;
 
-        public int redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
-        public int blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
+        public NetworkPlayer player;
+        public Image power;
+
+        public Text powerText;
+        public Text cooldownText;
+
+        public Image setReadyText;
+
         // Start is called before the first frame update
         void Start()
         {
@@ -40,17 +46,27 @@ namespace ChatClientExample
             {
                 joinBlue.interactable = true;
             }
+            if (player != null)
+            {
+                if (player.isLocal == true)
+                {
+                    power.GetComponent<RectTransform>().localScale = new Vector3((float)player.power / player.maxPower, 1, 1);
+                }
 
-        }
-        public void UpdateServerSettings()
-        {
-            redTeamCounter = (int)ServerSettings.redTeamPlayerCount;
-            blueTeamCounter = (int)ServerSettings.blueTeamPlayerCount;
+                powerText.text = player.power.ToString();
+                cooldownText.text = player.cooldown.ToString();
+            }
+           
+
         }
         
         public void ToggleWindow(Image window)
         {
             window.gameObject.SetActive(!window.gameObject.activeInHierarchy);
+        }
+        public void ToggleWindow(Image window, bool toggle)
+        {
+            window.gameObject.SetActive(toggle);
         }
     }
 }
